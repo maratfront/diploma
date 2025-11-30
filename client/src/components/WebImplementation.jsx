@@ -1,6 +1,5 @@
 import React from 'react'
 
-// Animated copy button component
 function AnimatedCopyButton({ text }) {
   const [copied, setCopied] = React.useState(false);
 
@@ -327,8 +326,8 @@ class WebAuthnManager {
               key={key}
               onClick={() => setSelectedExample(key)}
               className={`card-compact text-left transition-all duration-300 transform hover:scale-105 ${selectedExample === key
-                  ? 'ring-2 ring-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-5'
-                  : 'hover:shadow-xl'
+                ? 'ring-2 ring-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-5'
+                : 'hover:shadow-xl'
                 }`}
             >
               <h3 className="font-bold text-[var(--text-primary)] mb-2">{example.title}</h3>

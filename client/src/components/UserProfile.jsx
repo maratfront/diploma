@@ -5,25 +5,27 @@ function UserProfile({ user, onUserUpdate }) {
   try {
     const [isEditing, setIsEditing] = React.useState(false);
     const [formData, setFormData] = React.useState({
-      email: user.email || '',
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      patronymic: user.patronymic || '',
-      date_joined: user.date_joined || '',
-      department: user.department || '',
-      student_group: user.student_group || ''
+      email: user?.email || '',
+      first_name: user?.first_name || '',
+      last_name: user?.last_name || '',
+      patronymic: user?.patronymic || '',
+      date_joined: user?.date_joined || '',
+      department: user?.department || '',
+      student_group: user?.student_group || ''
     });
 
     React.useEffect(() => {
-      setFormData({
-        email: user.email || '',
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        patronymic: user.patronymic || '',
-        date_joined: user.date_joined || '',
-        department: user.department || '',
-        student_group: user.student_group || ''
-      });
+      if (user) {
+        setFormData({
+          email: user.email || '',
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          patronymic: user.patronymic || '',
+          date_joined: user.date_joined || '',
+          department: user.department || '',
+          student_group: user.student_group || ''
+        });
+      }
     }, [user]);
 
     const handleSave = async () => {
@@ -45,17 +47,40 @@ function UserProfile({ user, onUserUpdate }) {
     };
 
     const handleCancel = () => {
-      setFormData({
-        email: user.email || '',
-        first_name: user.first_name || '',
-        last_name: user.last_name || '',
-        patronymic: user.patronymic || '',
-        date_joined: user.date_joined || '',
-        department: user.department || '',
-        student_group: user.student_group || ''
-      });
+      if (user) {
+        setFormData({
+          email: user.email || '',
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          patronymic: user.patronymic || '',
+          date_joined: user.date_joined || '',
+          department: user.department || '',
+          student_group: user.student_group || ''
+        });
+      }
       setIsEditing(false);
     };
+
+    if (!user) {
+      return (
+        <div className="space-y-8 max-w-7xl mx-auto" data-name="user-profile" data-file="components/UserProfile.jsx">
+          <div className="section-header">
+            <h2 className="section-title">Личный кабинет</h2>
+            <p className="section-subtitle">
+              Загрузка данных профиля...
+            </p>
+          </div>
+          <div className="card">
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <div className="icon-loader text-3xl text-[var(--text-secondary)] animate-spin"></div>
+              </div>
+              <p className="text-[var(--text-secondary)]">Загрузка данных пользователя...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-8 max-w-7xl mx-auto" data-name="user-profile" data-file="components/UserProfile.jsx">
@@ -231,7 +256,7 @@ function UserProfile({ user, onUserUpdate }) {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-[var(--text-primary)]">Дата регистрации</span>
                   <span className="text-sm text-[var(--text-secondary)]">
-                    {user.date_joined ? new Date(user.date_joined).toLocaleDateString('ru-RU') : 'Неизвестно'}
+                    {user?.date_joined ? new Date(user.date_joined).toLocaleDateString('ru-RU') : 'Неизвестно'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">

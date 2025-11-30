@@ -107,7 +107,9 @@ function App() {
     };
 
     const handleLogin = (userData) => {
-      setUser(userData);
+      if (userData) {
+        setUser(userData);
+      }
       setIsAuthenticated(true);
     };
 

@@ -24,8 +24,8 @@ function Header({ user, theme, onToggleTheme, onLogout }) {
                 <div className="icon-user text-xl text-white"></div>
               </div>
               <div className="hidden sm:block">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">{user.first_name}</p>
-                <p className="text-xs text-[var(--text-secondary)]">{user.email}</p>
+                <p className="text-sm font-semibold text-[var(--text-primary)]">{user?.first_name || 'Пользователь'}</p>
+                <p className="text-xs text-[var(--text-secondary)]">{user?.email || ''}</p>
               </div>
               <button
                 onClick={onLogout}
