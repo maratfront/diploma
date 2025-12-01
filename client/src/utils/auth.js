@@ -11,15 +11,14 @@ export class AuthService {
           password: password
         })
       });
-      
+
       if (!res.ok) {
         throw new Error('Ошибка авторизации');
       }
-      
+
       const data = await res.json();
       localStorage.setItem('accessToken', data.access);
-      
-      // Получаем данные пользователя после успешного логина
+
       const userData = await this.getCurrentUser();
       return userData;
     } catch (error) {
@@ -45,15 +44,14 @@ export class AuthService {
           student_group: student_group
         })
       });
-      
+
       if (!res.ok) {
         throw new Error('Ошибка регистрации');
       }
-      
+
       const data = await res.json();
       localStorage.setItem('accessToken', data.access);
-      
-      // Получаем данные пользователя после успешной регистрации
+
       const userData = await this.getCurrentUser();
       return userData;
     } catch (error) {
@@ -80,11 +78,11 @@ export class AuthService {
         },
         body: JSON.stringify(userData)
       });
-      
+
       if (!res.ok) {
         throw new Error('Ошибка обновления данных пользователя');
       }
-      
+
       const data = await res.json();
       return data;
     } catch (error) {
@@ -102,11 +100,11 @@ export class AuthService {
           'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
         }
       });
-      
+
       if (!res.ok) {
         throw new Error('Ошибка получения данных пользователя');
       }
-      
+
       const data = await res.json();
       return data;
     } catch (error) {

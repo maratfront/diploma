@@ -25,7 +25,6 @@ function Auth({ onLogin, theme, onToggleTheme }) {
       setIsLoading(true);
 
       try {
-        // Validation
         if (!isLogin) {
           if (!formData.first_name.trim() && !formData.last_name.trim()) {
             throw new Error('Введите ваше имя и фамилию');

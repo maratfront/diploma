@@ -11,8 +11,10 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView
 )
 from django.urls import (
-    path
+    path,
+    include
 )
+
 from apps.user import views
 
 urlpatterns = [
@@ -59,6 +61,10 @@ urlpatterns = [
             permission_classes=[permissions.AllowAny]
         ),
         name='swagger-ui'
+    ),
+    path(
+        'api/security/',
+        include('apps.security.urls')
     )
 ]
 
