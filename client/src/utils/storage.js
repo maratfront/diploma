@@ -1,34 +1,78 @@
 import { NotificationManager } from '../components/Notification.jsx'
 
-export function getEncryptionHistory() {
+const API_BASE = 'http://127.0.0.1:8000/api';
+
+async function authorizedRequest(path, options = {}) {
+  const token = localStorage.getItem('accessToken');
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    let detail = 'Ошибка запроса к серверу';
+    try {
+      const data = await res.json();
+      if (data && data.detail) {
+        detail = data.detail;
+      }
+    } catch (e) {
+      // ignore parse error
+    }
+    throw new Error(detail);
+  }
+
+  if (res.status === 204) {
+    return null;
+  }
+
+  return res.json();
+}
+
+export async function getEncryptionHistory() {
   try {
-    const history = localStorage.getItem('encryptionHistory');
-    return history ? JSON.parse(history) : [];
+    const data = await authorizedRequest('/security/history/', {
+      method: 'GET',
+    });
+    return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('Error reading encryption history:', error);
+    console.error('Error reading encryption history from server:', error);
+    NotificationManager.error('Не удалось загрузить историю операций');
     return [];
   }
 }
 
-export function addToHistory(operation) {
+export async function addToHistory(operation) {
   try {
-    const history = getEncryptionHistory();
-    history.unshift(operation);
-
-    if (history.length > 100) {
-      history.splice(100);
-    }
-
-    localStorage.setItem('encryptionHistory', JSON.stringify(history));
+    await authorizedRequest('/security/history/', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: operation.type,
+        algorithm: operation.algorithm,
+        input: operation.input,
+        output: operation.output,
+      }),
+    });
   } catch (error) {
-    console.error('Error saving to history:', error);
+    console.error('Error saving operation to history on server:', error);
+    // Не блокируем UX, просто логируем и показываем уведомление
+    NotificationManager.warning('Операция выполнена, но не удалось сохранить её в историю');
   }
 }
 
-export function exportHistory() {
+export function exportHistory(history) {
   try {
-    const history = getEncryptionHistory();
-    if (history.length === 0) {
+    if (!history || history.length === 0) {
       NotificationManager.info('История пуста, нечего экспортировать');
       return;
     }
@@ -45,5 +89,16 @@ export function exportHistory() {
   } catch (error) {
     console.error('Error exporting history:', error);
     NotificationManager.error('Ошибка экспорта истории');
+  }
+}
+
+export async function clearHistoryOnServer() {
+  try {
+    await authorizedRequest('/security/history/', {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error('Error clearing history on server:', error);
+    throw error;
   }
 }

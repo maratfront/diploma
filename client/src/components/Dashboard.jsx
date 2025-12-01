@@ -9,15 +9,30 @@ function Dashboard() {
       algorithms: 3,
       successRate: 98.5
     });
+    const [recentHistory, setRecentHistory] = React.useState([]);
 
     React.useEffect(() => {
-      const history = getEncryptionHistory();
-      setStats({
-        totalOperations: history.length,
-        encryptedFiles: history.filter(item => item.type === 'encrypt').length,
-        algorithms: 6,
-        successRate: 98.5
-      });
+      let isMounted = true;
+
+      const loadHistory = async () => {
+        const history = await getEncryptionHistory();
+        if (!isMounted) return;
+
+        setStats({
+          totalOperations: history.length,
+          encryptedFiles: history.filter(item => item.type === 'encrypt').length,
+          algorithms: 6,
+          successRate: 98.5
+        });
+
+        setRecentHistory(history.slice(0, 8));
+      };
+
+      loadHistory();
+
+      return () => {
+        isMounted = false;
+      };
     }, []);
 
     const statCards = [
@@ -116,30 +131,36 @@ function Dashboard() {
           <div className="card-compact">
             <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Последние операции</h3>
             <div className="space-y-3">
-              {getEncryptionHistory().slice(0, 4).map((item, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-[var(--bg-tertiary)] rounded-xl">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
-                    }`}>
-                    <div className={`icon-${item.type === 'encrypt' ? 'lock' :
+              {recentHistory.length === 0 ? (
+                <p className="text-sm text-[var(--text-secondary)]">
+                  История операций пока пуста. Выполните любую операцию шифрования, расшифровки или подписи.
+                </p>
+              ) : (
+                recentHistory.map((item, index) => (
+                  <div key={index} className="flex items-center space-x-3 p-3 bg-[var(--bg-tertiary)] rounded-xl">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
+                      }`}>
+                      <div className={`icon-${item.type === 'encrypt' ? 'lock' :
                         item.type === 'decrypt' ? 'lock-open' :
                           item.type === 'sign' ? 'pen-tool' :
                             item.type === 'verify' ? 'shield-check' : 'lock-open'
-                      } text-lg ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
-                      }`}></div>
+                        } text-lg ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
+                        }`}></div>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-[var(--text-primary)] text-sm">
+                        {item.type === 'encrypt' ? 'Шифрование' :
+                          item.type === 'decrypt' ? 'Расшифровка' :
+                            item.type === 'sign' ? 'Подпись' : 'Проверка'}
+                      </p>
+                      <p className="text-xs text-[var(--text-secondary)]">{item.algorithm}</p>
+                    </div>
+                    <span className="text-xs text-[var(--text-secondary)]">
+                      {new Date(item.timestamp).toLocaleTimeString()}
+                    </span>
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-[var(--text-primary)] text-sm">
-                      {item.type === 'encrypt' ? 'Шифрование' :
-                        item.type === 'decrypt' ? 'Расшифровка' :
-                          item.type === 'sign' ? 'Подпись' : 'Проверка'}
-                    </p>
-                    <p className="text-xs text-[var(--text-secondary)]">{item.algorithm}</p>
-                  </div>
-                  <span className="text-xs text-[var(--text-secondary)]">
-                    {new Date(item.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>

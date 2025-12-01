@@ -1,6 +1,6 @@
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
-from apps.security.models import AlgorithmComparison
+from apps.security.models import AlgorithmComparison, UserOperationHistory
 
 
 class CryptoRequestSerializer(serializers.Serializer):
@@ -33,6 +33,30 @@ class CryptoRequestSerializer(serializers.Serializer):
         return attrs
 
 
+class RSAGenerateKeyPairResponseSerializer(serializers.Serializer):
+    public_key = serializers.CharField(help_text="Открытый ключ RSA в кодировке Base64 (DER)")
+    private_key = serializers.CharField(help_text="Приватный ключ RSA в кодировке Base64 (DER, PKCS#8)")
+
+
+class RSASignRequestSerializer(serializers.Serializer):
+    message = serializers.CharField(help_text="Сообщение, которое необходимо подписать")
+    private_key = serializers.CharField(help_text="Приватный ключ RSA в кодировке Base64 (DER, PKCS#8)")
+
+
+class RSASignResponseSerializer(serializers.Serializer):
+    signature = serializers.CharField(help_text="Цифровая подпись в кодировке Base64")
+
+
+class RSAVerifyRequestSerializer(serializers.Serializer):
+    message = serializers.CharField(help_text="Сообщение для проверки подписи")
+    signature = serializers.CharField(help_text="Подпись в кодировке Base64")
+    public_key = serializers.CharField(help_text="Открытый ключ RSA в кодировке Base64 (DER)")
+
+
+class RSAVerifyResponseSerializer(serializers.Serializer):
+    is_valid = serializers.BooleanField(help_text="Результат проверки подписи")
+
+
 @extend_schema_serializer(component_name='AlgorithmComparison')
 class AlgorithmComparisonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +73,33 @@ class AlgorithmComparisonSerializer(serializers.ModelSerializer):
             'use_case'
         ]
         read_only_fields = fields
+
+
+@extend_schema_serializer(component_name='UserOperationHistory')
+class UserOperationHistorySerializer(serializers.ModelSerializer):
+    """
+    Сериализатор истории операций.
+
+    На фронтенд отдаем поля в том же виде, как они сейчас хранятся в localStorage:
+    - type
+    - algorithm
+    - input
+    - output
+    - timestamp
+    """
+
+    type = serializers.CharField(source='operation_type')
+    input = serializers.CharField(source='input_data')
+    output = serializers.CharField(source='output_data')
+
+    class Meta:
+        model = UserOperationHistory
+        fields = [
+            'id',
+            'type',
+            'algorithm',
+            'input',
+            'output',
+            'timestamp',
+        ]
+        read_only_fields = ['id', 'timestamp']

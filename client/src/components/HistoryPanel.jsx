@@ -1,14 +1,30 @@
 import React from 'react'
-import { getEncryptionHistory, exportHistory } from '../utils/storage.js'
+import { getEncryptionHistory, exportHistory, clearHistoryOnServer } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
 
 function HistoryPanel() {
   try {
     const [history, setHistory] = React.useState([]);
     const [filter, setFilter] = React.useState('all');
+    const [isLoading, setIsLoading] = React.useState(false);
 
     React.useEffect(() => {
-      setHistory(getEncryptionHistory());
+      let isMounted = true;
+
+      const loadHistory = async () => {
+        setIsLoading(true);
+        const data = await getEncryptionHistory();
+        if (isMounted) {
+          setHistory(data);
+          setIsLoading(false);
+        }
+      };
+
+      loadHistory();
+
+      return () => {
+        isMounted = false;
+      };
     }, []);
 
     const filteredHistory = history.filter(item => {
@@ -16,15 +32,19 @@ function HistoryPanel() {
       return item.type === filter;
     });
 
-    const clearHistory = () => {
+    const clearHistory = async () => {
       if (history.length === 0) {
         NotificationManager.info('История уже пуста');
         return;
       }
       if (window.confirm('Вы уверены, что хотите очистить всю историю операций?')) {
-        localStorage.removeItem('encryptionHistory');
-        setHistory([]);
-        NotificationManager.success('История операций очищена');
+        try {
+          await clearHistoryOnServer();
+          setHistory([]);
+          NotificationManager.success('История операций очищена');
+        } catch (error) {
+          NotificationManager.error('Не удалось очистить историю операций на сервере');
+        }
       }
     };
 
@@ -53,7 +73,7 @@ function HistoryPanel() {
               </select>
 
               {history.length > 0 && (
-                <button onClick={() => exportHistory()} className="btn-secondary">
+              <button onClick={() => exportHistory(history)} className="btn-secondary">
                   <div className="icon-download text-lg mr-2"></div>
                   Экспорт
                 </button>
@@ -68,7 +88,15 @@ function HistoryPanel() {
         </div>
 
         <div className="card">
-          {filteredHistory.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <div className="icon-loader-2 text-3xl text-[var(--text-secondary)] animate-spin"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">Загрузка истории операций...</h3>
+              <p className="text-[var(--text-secondary)]">Пожалуйста, подождите, пока мы получаем данные с сервера</p>
+            </div>
+          ) : filteredHistory.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
                 <div className="icon-history text-3xl text-[var(--text-secondary)]"></div>

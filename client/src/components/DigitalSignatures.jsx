@@ -1,129 +1,138 @@
 import React from 'react'
+import { NotificationManager } from './Notification.jsx'
+import { addToHistory } from '../utils/storage.js'
+
+const API_BASE = 'http://127.0.0.1:8000/api/security';
+
+async function authorizedPost(path, body) {
+  const token = localStorage.getItem('accessToken');
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : ''
+    },
+    body: JSON.stringify(body || {})
+  });
+
+  if (!res.ok) {
+    let detail = 'Ошибка запроса к серверу';
+    try {
+      const data = await res.json();
+      if (data && data.detail) {
+        detail = data.detail;
+      }
+    } catch (e) {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+
+  return res.json();
+}
 
 function DigitalSignatures() {
-  try {
-    const [message, setMessage] = React.useState('');
-    const [signature, setSignature] = React.useState('');
-    const [keyPair, setKeyPair] = React.useState(null);
-    const [operation, setOperation] = React.useState('sign');
-    const [verificationResult, setVerificationResult] = React.useState(null);
-    const [isProcessing, setIsProcessing] = React.useState(false);
+  const [message, setMessage] = React.useState('');
+  const [signature, setSignature] = React.useState('');
+  const [keyPair, setKeyPair] = React.useState(null);
+  const [operation, setOperation] = React.useState('sign');
+  const [verificationResult, setVerificationResult] = React.useState(null);
+  const [isProcessing, setIsProcessing] = React.useState(false);
 
-    React.useEffect(() => {
-      // Генерируем ключевую пару при загрузке
-      generateKeyPair();
-    }, []);
+  const generateKeyPair = async () => {
+    setIsProcessing(true);
+    try {
+      const data = await authorizedPost('/rsa/keypair/', {});
+      setKeyPair({
+        publicKey: data.public_key,
+        privateKey: data.private_key,
+        publicKeyDisplay: data.public_key,
+        privateKeyDisplay: data.private_key
+      });
+      NotificationManager.success('Ключевая пара RSA успешно сгенерирована на сервере');
+    } catch (error) {
+      console.error('Ошибка генерации ключей:', error);
+      NotificationManager.error('Ошибка генерации ключей: ' + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-    const generateKeyPair = async () => {
-      try {
-        // Real RSA key pair generation
-        const keyPair = await crypto.subtle.generateKey(
-          {
-            name: 'RSA-PSS',
-            modulusLength: 2048,
-            publicExponent: new Uint8Array([1, 0, 1]),
-            hash: 'SHA-256'
-          },
-          true,
-          ['sign', 'verify']
-        );
+  React.useEffect(() => {
+    // Генерируем ключевую пару при загрузке (на бэкенде)
+    generateKeyPair();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-        // Export keys for display
-        const publicKey = await crypto.subtle.exportKey('spki', keyPair.publicKey);
-        const privateKey = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+  const handleSign = async () => {
+    if (!message.trim() || !keyPair) return;
 
-        setKeyPair({
-          publicKey: keyPair.publicKey,
-          privateKey: keyPair.privateKey,
-          publicKeyDisplay: btoa(String.fromCharCode(...new Uint8Array(publicKey))),
-          privateKeyDisplay: btoa(String.fromCharCode(...new Uint8Array(privateKey)))
-        });
-      } catch (error) {
-        console.error('Ошибка генерации ключей:', error);
+    setIsProcessing(true);
+
+    try {
+      const data = await authorizedPost('/rsa/sign/', {
+        message,
+        private_key: keyPair.privateKey
+      });
+
+      const signatureB64 = data.signature;
+      setSignature(signatureB64);
+
+      await addToHistory({
+        type: 'sign',
+        algorithm: 'RSA-PSS-2048',
+        input: message,
+        output: signatureB64,
+        timestamp: Date.now()
+      });
+
+      NotificationManager.success('Цифровая подпись успешно создана (на сервере)!');
+    } catch (error) {
+      console.error('Ошибка подписи:', error);
+      NotificationManager.error('Ошибка создания подписи: ' + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!message.trim() || !signature.trim() || !keyPair) return;
+
+    setIsProcessing(true);
+
+    try {
+      const data = await authorizedPost('/rsa/verify/', {
+        message,
+        signature,
+        public_key: keyPair.publicKey
+      });
+
+      const isValid = data.is_valid;
+      setVerificationResult(isValid);
+
+      await addToHistory({
+        type: 'verify',
+        algorithm: 'RSA-PSS-2048',
+        input: `${message} | ${signature}`,
+        output: isValid ? 'Подпись верна' : 'Подпись неверна',
+        timestamp: Date.now()
+      });
+
+      if (isValid) {
+        NotificationManager.success('Подпись действительна!');
+      } else {
+        NotificationManager.warning('Подпись недействительна!');
       }
-    };
+    } catch (error) {
+      console.error('Ошибка проверки:', error);
+      setVerificationResult(false);
+      NotificationManager.error('Ошибка проверки подписи: ' + error.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-    const handleSign = async () => {
-      if (!message.trim() || !keyPair) return;
-
-      setIsProcessing(true);
-
-      try {
-        // Sign message with private key
-        const signature = await crypto.subtle.sign(
-          {
-            name: 'RSA-PSS',
-            saltLength: 32
-          },
-          keyPair.privateKey,
-          new TextEncoder().encode(message)
-        );
-
-        const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)));
-        setSignature(signatureB64);
-
-        addToHistory({
-          type: 'sign',
-          algorithm: 'RSA-PSS-2048',
-          input: message,
-          output: signatureB64,
-          timestamp: Date.now()
-        });
-
-        NotificationManager.success('Цифровая подпись успешно создана!');
-      } catch (error) {
-        console.error('Ошибка подписи:', error);
-        NotificationManager.error('Ошибка создания подписи: ' + error.message);
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    const handleVerify = async () => {
-      if (!message.trim() || !signature.trim() || !keyPair) return;
-
-      setIsProcessing(true);
-
-      try {
-        // Convert signature from base64
-        const signatureBytes = Uint8Array.from(atob(signature), c => c.charCodeAt(0));
-
-        // Verify signature with public key
-        const isValid = await crypto.subtle.verify(
-          {
-            name: 'RSA-PSS',
-            saltLength: 32
-          },
-          keyPair.publicKey,
-          signatureBytes,
-          new TextEncoder().encode(message)
-        );
-
-        setVerificationResult(isValid);
-
-        addToHistory({
-          type: 'verify',
-          algorithm: 'RSA-PSS-2048',
-          input: `${message} | ${signature}`,
-          output: isValid ? 'Подпись верна' : 'Подпись неверна',
-          timestamp: Date.now()
-        });
-
-        if (isValid) {
-          NotificationManager.success('Подпись действительна!');
-        } else {
-          NotificationManager.warning('Подпись недействительна!');
-        }
-      } catch (error) {
-        console.error('Ошибка проверки:', error);
-        setVerificationResult(false);
-        NotificationManager.error('Ошибка проверки подписи: ' + error.message);
-      } finally {
-        setIsProcessing(false);
-      }
-    };
-
-    return (
+  return (
       <div className="space-y-8 max-w-7xl mx-auto" data-name="digital-signatures" data-file="components/DigitalSignatures.jsx">
         <div className="section-header">
           <h2 className="section-title">Электронные подписи</h2>
@@ -189,8 +198,8 @@ function DigitalSignatures() {
                       key={op}
                       onClick={() => setOperation(op)}
                       className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${operation === op
-                          ? 'bg-[var(--primary-color)] text-white'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
+                        ? 'bg-[var(--primary-color)] text-white'
+                        : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
                         }`}
                     >
                       {op === 'sign' ? 'Подписать' : 'Проверить'}
@@ -262,8 +271,8 @@ function DigitalSignatures() {
 
                 {operation === 'verify' && verificationResult !== null && (
                   <div className={`p-4 rounded-xl border ${verificationResult
-                      ? 'bg-green-50 border-green-300 text-green-700'
-                      : 'bg-red-50 border-red-300 text-red-700'
+                    ? 'bg-green-50 border-green-300 text-green-700'
+                    : 'bg-red-50 border-red-300 text-red-700'
                     }`}>
                     <div className="flex items-center space-x-3">
                       <div className={`icon-${verificationResult ? 'check-circle' : 'x-circle'} text-xl`}></div>
@@ -326,10 +335,6 @@ function DigitalSignatures() {
         </div>
       </div>
     );
-  } catch (error) {
-    console.error('DigitalSignatures component error:', error);
-    return null;
-  }
 }
 
 // Copy button with animation

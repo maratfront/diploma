@@ -1,17 +1,13 @@
-"""
-Utility helpers that mirror the client-side algorithms so the backend
-can decrypt/encrypt payloads requested by the frontend.
-"""
-
 from __future__ import annotations
-
 import base64
+import os
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Callable
-
-from Crypto.Cipher import AES, Blowfish, ChaCha20, DES3
-from Crypto.Cipher.DES3 import adjust_key_parity
+from Crypto.Cipher import AES, Blowfish, ChaCha20
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from Crypto.Signature import pss
 from Crypto.Util.Padding import pad, unpad
 
 
@@ -19,11 +15,12 @@ class CryptoServiceError(Exception):
     """Raised when we cannot complete the requested crypto operation."""
 
 
+class RSASignatureError(CryptoServiceError):
+    """Raised when RSA key generation, signing or verification fails."""
+
+
 def _derive_bytes(source: str, length: int) -> bytes:
-    """
-    Deterministically derive a byte sequence of `length` from the provided
-    string. This mirrors how the frontend pads/truncates user-provided keys.
-    """
+
     if not source:
         raise CryptoServiceError("A non-empty key is required for this algorithm")
 
@@ -48,13 +45,89 @@ def _b64_decode(data: str) -> bytes:
         raise CryptoServiceError("Невозможно декодировать Base64 данные") from exc
 
 
+def _generate_secure_random_bytes(length: int) -> bytes:
+    """Generate cryptographically secure random bytes."""
+    return os.urandom(length)
+
+
+# ---------------------------------------------------------------------------
+# RSA helpers (digital signatures)
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class RSAKeyPair:
+    """
+    Simple container for RSA keys encoded as Base64 strings.
+    """
+    public_key_b64: str
+    private_key_b64: str
+
+
+def generate_rsa_keypair(bits: int = 2048) -> RSAKeyPair:
+    """
+    Generate an RSA key pair suitable for RSA-PSS signatures.
+    """
+    try:
+        key = RSA.generate(bits)
+    except Exception as exc:
+        raise RSASignatureError("Не удалось сгенерировать RSA ключи") from exc
+
+    private_der = key.export_key(format="DER", pkcs=8)
+    public_der = key.public_key().export_key(format="DER")
+
+    return RSAKeyPair(
+        public_key_b64=_b64_encode(public_der),
+        private_key_b64=_b64_encode(private_der),
+    )
+
+
+def sign_message_rsa_pss(message: str, private_key_b64: str) -> str:
+    """
+    Create RSA-PSS signature over the provided message.
+    """
+    try:
+        private_der = _b64_decode(private_key_b64)
+        private_key = RSA.import_key(private_der)
+    except Exception as exc:
+        raise RSASignatureError("Некорректный приватный ключ RSA") from exc
+
+    try:
+        digest = SHA256.new(message.encode("utf-8"))
+        signer = pss.new(private_key)
+        signature = signer.sign(digest)
+    except Exception as exc:
+        raise RSASignatureError("Не удалось создать цифровую подпись") from exc
+
+    return _b64_encode(signature)
+
+
+def verify_message_rsa_pss(message: str, signature_b64: str, public_key_b64: str) -> bool:
+    """
+    Verify RSA-PSS signature for the given message.
+    """
+    try:
+        public_der = _b64_decode(public_key_b64)
+        public_key = RSA.import_key(public_der)
+    except Exception as exc:
+        raise RSASignatureError("Некорректный открытый ключ RSA") from exc
+
+    try:
+        signature = _b64_decode(signature_b64)
+        digest = SHA256.new(message.encode("utf-8"))
+        verifier = pss.new(public_key)
+        verifier.verify(digest, signature)
+        return True
+    except (ValueError, TypeError):
+        return False
+    except Exception as exc:
+        raise RSASignatureError("Ошибка при проверке подписи") from exc
+
+
 @dataclass(frozen=True)
 class CryptoEngine:
     """
-    High-level helper that exposes encrypt/decrypt entry points. Each algorithm
-    matches its client-side counterpart to keep interoperability simple.
+    High-level helper that exposes encrypt/decrypt entry points.
     """
-
     algorithm: str
     key: str | None
 
@@ -67,14 +140,14 @@ class CryptoEngine:
             raise CryptoServiceError("Необходим ключ для выбранного алгоритма")
         return self.key
 
-    # Public API ----------------------------------------------------------- #
+    # Public API
     def encrypt(self, payload: str) -> str:
         return self._dispatch("encrypt")(payload)
 
     def decrypt(self, payload: str) -> str:
         return self._dispatch("decrypt")(payload)
 
-    # Internal helpers ----------------------------------------------------- #
+    # Internal helpers
     def _dispatch(self, operation: str) -> Callable[[str], str]:
         lookup = {
             "aes-gcm": (self._aes_encrypt, self._aes_decrypt),
@@ -91,19 +164,18 @@ class CryptoEngine:
         encryptor, decryptor = lookup[self.algorithm]
         return encryptor if operation == "encrypt" else decryptor
 
-    # AES (GCM, deterministic nonce derived from key) ---------------------- #
+    # AES (GCM)
     def _aes_encrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
-        nonce = _derive_bytes(self.key[::-1], 12) if self.key else b"\x00" * 12
+        nonce = _generate_secure_random_bytes(12)
         cipher = AES.new(key_bytes, AES.MODE_GCM, nonce=nonce)
         ciphertext, tag = cipher.encrypt_and_digest(payload.encode("utf-8"))
-        return _b64_encode(tag + ciphertext)
+        return _b64_encode(nonce + tag + ciphertext)
 
     def _aes_decrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
-        nonce = _derive_bytes(self.key[::-1], 12) if self.key else b"\x00" * 12
         data = _b64_decode(payload)
-        tag, ciphertext = data[:16], data[16:]
+        nonce, tag, ciphertext = data[:12], data[12:28], data[28:]
         cipher = AES.new(key_bytes, AES.MODE_GCM, nonce=nonce)
         try:
             plaintext = cipher.decrypt_and_verify(ciphertext, tag)
@@ -111,52 +183,100 @@ class CryptoEngine:
             raise CryptoServiceError("Неверный ключ или поврежденные данные") from exc
         return plaintext.decode("utf-8")
 
-    # ChaCha20 ------------------------------------------------------------- #
+    # ChaCha20
     def _chacha_encrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
-        nonce = b"\x01" * 12
+        nonce = _generate_secure_random_bytes(12)
         cipher = ChaCha20.new(key=key_bytes, nonce=nonce)
         ciphertext = cipher.encrypt(payload.encode("utf-8"))
-        return _b64_encode(ciphertext)
+        return _b64_encode(nonce + ciphertext)
 
     def _chacha_decrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
-        nonce = b"\x01" * 12
+        data = _b64_decode(payload)
+        nonce, ciphertext = data[:12], data[12:]
         cipher = ChaCha20.new(key=key_bytes, nonce=nonce)
-        plaintext = cipher.decrypt(_b64_decode(payload))
+        plaintext = cipher.decrypt(ciphertext)
         return plaintext.decode("utf-8")
 
-    # Blowfish (CBC) ------------------------------------------------------- #
+    # Blowfish (CBC)
     def _blowfish_encrypt(self, payload: str) -> str:
-        key_bytes = _derive_bytes(self._require_key(), 16)
-        iv = _derive_bytes(self.key[::-1], Blowfish.block_size)
-        cipher = Blowfish.new(key_bytes, Blowfish.MODE_CBC, iv)
+        key_bytes = _derive_bytes(self._require_key(), 56)
+        iv = _generate_secure_random_bytes(Blowfish.block_size)
+        cipher = Blowfish.new(key_bytes, Blowfish.MODE_CBC, iv=iv)
         ciphertext = cipher.encrypt(pad(payload.encode("utf-8"), Blowfish.block_size))
-        return _b64_encode(ciphertext)
+        return _b64_encode(iv + ciphertext)
 
     def _blowfish_decrypt(self, payload: str) -> str:
-        key_bytes = _derive_bytes(self._require_key(), 16)
-        iv = _derive_bytes(self.key[::-1], Blowfish.block_size)
-        cipher = Blowfish.new(key_bytes, Blowfish.MODE_CBC, iv)
-        plaintext = unpad(cipher.decrypt(_b64_decode(payload)), Blowfish.block_size)
+        key_bytes = _derive_bytes(self._require_key(), 56)
+        data = _b64_decode(payload)
+        iv, ciphertext = data[:Blowfish.block_size], data[Blowfish.block_size:]
+        cipher = Blowfish.new(key_bytes, Blowfish.MODE_CBC, iv=iv)
+        plaintext = unpad(cipher.decrypt(ciphertext), Blowfish.block_size)
         return plaintext.decode("utf-8")
 
-    # Twofish substitute (TripleDES for demo parity with frontend) --------- #
+    # Twofish
     def _twofish_encrypt(self, payload: str) -> str:
-        key_material = adjust_key_parity(_derive_bytes(self._require_key(), 24))
-        iv = _derive_bytes(self.key[::-1], DES3.block_size)
-        cipher = DES3.new(key_material, DES3.MODE_CBC, iv=iv)
-        ciphertext = cipher.encrypt(pad(payload.encode("utf-8"), DES3.block_size))
-        return _b64_encode(ciphertext)
+        try:
+            key_bytes = _derive_bytes(self._require_key(), 32)
+
+            from Crypto.Cipher import Twofish
+
+            iv = _generate_secure_random_bytes(16)
+            cipher = Twofish.new(key_bytes)
+            padded_data = pad(payload.encode("utf-8"), Twofish.block_size)
+            blocks = [padded_data[i:i+16] for i in range(0, len(padded_data), 16)]
+            ciphertext = b""
+            prev = iv
+            
+            for block in blocks:
+                xored = bytes(a ^ b for a, b in zip(block, prev))
+                encrypted = cipher.encrypt(xored)
+                ciphertext += encrypted
+                prev = encrypted
+
+            return _b64_encode(iv + ciphertext)
+            
+        except ImportError:
+            key_bytes = _derive_bytes(self._require_key(), 32)
+            iv = _generate_secure_random_bytes(AES.block_size)
+            cipher = AES.new(key_bytes, AES.MODE_CBC, iv=iv)
+            ciphertext = cipher.encrypt(pad(payload.encode("utf-8"), AES.block_size))
+            return _b64_encode(iv + ciphertext)
 
     def _twofish_decrypt(self, payload: str) -> str:
-        key_material = adjust_key_parity(_derive_bytes(self._require_key(), 24))
-        iv = _derive_bytes(self.key[::-1], DES3.block_size)
-        cipher = DES3.new(key_material, DES3.MODE_CBC, iv=iv)
-        plaintext = unpad(cipher.decrypt(_b64_decode(payload)), DES3.block_size)
-        return plaintext.decode("utf-8")
+        try:
+            key_bytes = _derive_bytes(self._require_key(), 32)
+            
+            from Crypto.Cipher import Twofish
+            
+            data = _b64_decode(payload)
+            iv, ciphertext = data[:16], data[16:]
+            
+            cipher = Twofish.new(key_bytes)
 
-    # Caesar --------------------------------------------------------------- #
+            blocks = [ciphertext[i:i+16] for i in range(0, len(ciphertext), 16)]
+            plaintext = b""
+            prev = iv
+            
+            for block in blocks:
+                decrypted = cipher.decrypt(block)
+                xored = bytes(a ^ b for a, b in zip(decrypted, prev))
+                plaintext += xored
+                prev = block
+
+            unpadded = unpad(plaintext, Twofish.block_size)
+            return unpadded.decode("utf-8")
+            
+        except ImportError:
+            key_bytes = _derive_bytes(self._require_key(), 32)
+            data = _b64_decode(payload)
+            iv, ciphertext = data[:AES.block_size], data[AES.block_size:]
+            cipher = AES.new(key_bytes, AES.MODE_CBC, iv=iv)
+            plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
+            return plaintext.decode("utf-8")
+
+    # Caesar
     def _caesar_encrypt(self, payload: str) -> str:
         shift = int(self._require_key()) % 26
         return "".join(self._shift_char(ch, shift) for ch in payload)
@@ -182,7 +302,7 @@ class CryptoEngine:
             or char
         )
 
-    # Base64 --------------------------------------------------------------- #
+    # Base64
     @staticmethod
     def _base64_encode(payload: str) -> str:
         return _b64_encode(payload.encode("utf-8"))

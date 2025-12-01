@@ -40,7 +40,7 @@ function EncryptionPanel() {
 
         setOutputText(result);
 
-        addToHistory({
+        await addToHistory({
           type: operation,
           algorithm: algorithm.toUpperCase(),
           input: inputText,

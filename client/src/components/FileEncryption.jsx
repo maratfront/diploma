@@ -52,7 +52,7 @@ function FileEncryption() {
           filename: `${operation}_${selectedFile.name}`
         });
 
-        addToHistory({
+        await addToHistory({
           type: operation,
           algorithm: algorithm.toUpperCase(),
           input: `Файл: ${selectedFile.name}`,
