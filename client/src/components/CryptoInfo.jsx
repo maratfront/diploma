@@ -92,16 +92,16 @@ function CryptoInfo() {
     }, []);
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="crypto-info" data-file="components/CryptoInfo.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="crypto-info" data-file="components/CryptoInfo.jsx">
         <div className="section-header">
-          <h2 className="section-title">База знаний по криптографии</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">База знаний по криптографии</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Полное руководство по алгоритмам шифрования, их характеристикам и областям применения
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          {Object.entries(cryptoCategories).map(([key, category]) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {cryptoCategories && Object.entries(cryptoCategories).map(([key, category]) => (
             <button
               key={key}
               onClick={() => {
@@ -126,17 +126,21 @@ function CryptoInfo() {
                 {category.description}
               </p>
             </button>
-          ))}
+          )) || (
+            <div className="col-span-full text-center py-4">
+              <p className="text-[var(--text-secondary)]">Загрузка категорий...</p>
+            </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
           <div className="xl:col-span-2">
-            <div className="card">
-              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">
-                {cryptoCategories[selectedCategory].title}
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-4 sm:mb-6">
+                {cryptoCategories?.[selectedCategory]?.title || 'Загрузка...'}
               </h3>
               <div className="grid gap-4">
-                {algorithms[selectedCategory].map((algo, index) => (
+                {algorithms && algorithms[selectedCategory] && algorithms[selectedCategory].map((algo, index) => (
                   <button
                     key={index}
                     onClick={() => setSelectedAlgorithm(algo)}
@@ -161,16 +165,22 @@ function CryptoInfo() {
                       <span>Скорость: {algo.speed}</span>
                     </div>
                   </button>
-                ))}
+                )) || (
+                  <div className="text-center py-8">
+                    <p className="text-[var(--text-secondary)]">
+                      {algorithms ? 'Алгоритмы не найдены' : 'Загрузка алгоритмов...'}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {selectedAlgorithm ? (
               <>
-                <div className="card-compact">
-                  <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">
+                <div className="card-compact p-4 sm:p-6">
+                  <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">
                     {selectedAlgorithm.name}
                   </h3>
                   <div className="space-y-3">

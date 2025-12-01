@@ -49,21 +49,21 @@ function HistoryPanel() {
     };
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="history-panel" data-file="components/HistoryPanel.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="history-panel" data-file="components/HistoryPanel.jsx">
         <div className="section-header">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
-              <h2 className="section-title">История операций</h2>
-              <p className="section-subtitle">
+              <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">История операций</h2>
+              <p className="section-subtitle text-base sm:text-lg">
                 Полный журнал всех операций шифрования и расшифровки с возможностью фильтрации и экспорта
               </p>
             </div>
 
-            <div className="flex items-center space-x-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 w-full lg:w-auto">
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="input-field w-auto min-w-[160px]"
+                className="input-field w-full sm:w-auto min-w-[160px]"
               >
                 <option value="all">Все операции</option>
                 <option value="encrypt">Шифрование</option>
@@ -87,28 +87,28 @@ function HistoryPanel() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card p-4 sm:p-6 lg:p-8">
           {isLoading ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <div className="icon-loader-2 text-3xl text-[var(--text-secondary)] animate-spin"></div>
+            <div className="text-center py-12 sm:py-16">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--bg-tertiary)] rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <div className="icon-loader-2 text-2xl sm:text-3xl text-[var(--text-secondary)] animate-spin"></div>
               </div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">Загрузка истории операций...</h3>
-              <p className="text-[var(--text-secondary)]">Пожалуйста, подождите, пока мы получаем данные с сервера</p>
+              <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2">Загрузка истории операций...</h3>
+              <p className="text-sm sm:text-base text-[var(--text-secondary)]">Пожалуйста, подождите, пока мы получаем данные с сервера</p>
             </div>
           ) : filteredHistory.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <div className="icon-history text-3xl text-[var(--text-secondary)]"></div>
+            <div className="text-center py-12 sm:py-16">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--bg-tertiary)] rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <div className="icon-history text-2xl sm:text-3xl text-[var(--text-secondary)]"></div>
               </div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">История операций пуста</h3>
-              <p className="text-[var(--text-secondary)] mb-6">Начните использовать систему шифрования для создания истории операций</p>
+              <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] mb-2">История операций пуста</h3>
+              <p className="text-sm sm:text-base text-[var(--text-secondary)] mb-6">Начните использовать систему шифрования для создания истории операций</p>
             </div>
           ) : (
             <div className="space-y-4">
               {filteredHistory.map((item, index) => (
-                <div key={index} className="border border-[var(--border-color)] rounded-xl p-6 hover:shadow-lg transition-all duration-200">
-                  <div className="flex items-center justify-between mb-4">
+                <div key={index} className="border border-[var(--border-color)] rounded-xl p-4 sm:p-6 hover:shadow-lg transition-all duration-200">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
                     <div className="flex items-center space-x-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
                         }`}>
@@ -130,7 +130,7 @@ function HistoryPanel() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-left sm:text-right">
                       <span className="text-sm text-[var(--text-secondary)]">
                         {new Date(item.timestamp).toLocaleDateString()}
                       </span>
@@ -141,7 +141,7 @@ function HistoryPanel() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                     <div>
                       <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">Входные данные:</p>
                       <div className="bg-[var(--bg-tertiary)] p-4 rounded-xl">

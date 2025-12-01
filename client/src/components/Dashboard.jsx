@@ -76,20 +76,20 @@ function Dashboard() {
     ];
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="dashboard" data-file="components/Dashboard.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="dashboard" data-file="components/Dashboard.jsx">
         <div className="section-header">
-          <h2 className="section-title">Панель управления</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">Панель управления</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Комплексный обзор системы криптографической защиты данных
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
           {statCards.map((stat, index) => (
             <div key={index} className="stat-card">
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}>
-                  <div className={`icon-${stat.icon} text-2xl text-white`}></div>
+                <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br ${stat.gradient} flex items-center justify-center shadow-lg`}>
+                  <div className={`icon-${stat.icon} text-xl sm:text-2xl text-white`}></div>
                 </div>
                 <div className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                   {stat.change}
@@ -103,10 +103,10 @@ function Dashboard() {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
           <div className="xl:col-span-2">
-            <div className="card">
-              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">Криптографические алгоритмы</h3>
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-4 sm:mb-6">Криптографические алгоритмы</h3>
               <div className="space-y-4">
                 {algorithms.map((algorithm, index) => (
                   <div key={index} className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-xl">
@@ -128,8 +128,8 @@ function Dashboard() {
             </div>
           </div>
 
-          <div className="card-compact">
-            <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Последние операции</h3>
+          <div className="card-compact p-4 sm:p-6">
+            <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">Последние операции</h3>
             <div className="space-y-3">
               {recentHistory.length === 0 ? (
                 <p className="text-sm text-[var(--text-secondary)]">

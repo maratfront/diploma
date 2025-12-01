@@ -133,21 +133,21 @@ function DigitalSignatures() {
   };
 
   return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="digital-signatures" data-file="components/DigitalSignatures.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="digital-signatures" data-file="components/DigitalSignatures.jsx">
         <div className="section-header">
-          <h2 className="section-title">Электронные подписи</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">Электронные подписи</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Создание и проверка цифровых подписей с использованием алгоритма RSA для обеспечения подлинности документов
           </p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="card">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
-                <div className="icon-key text-xl text-white"></div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+          <div className="card p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
+                <div className="icon-key text-lg sm:text-xl text-white"></div>
               </div>
-              <h3 className="text-xl font-bold text-[var(--text-primary)]">Ключи RSA</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Ключи RSA</h3>
             </div>
 
             {keyPair && (
@@ -183,21 +183,21 @@ function DigitalSignatures() {
           </div>
 
           <div className="xl:col-span-2">
-            <div className="card">
-              <div className="flex items-center justify-between mb-6">
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
-                    <div className="icon-shield-check text-xl text-white"></div>
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
+                    <div className="icon-shield-check text-lg sm:text-xl text-white"></div>
                   </div>
-                  <h3 className="text-xl font-bold text-[var(--text-primary)]">Цифровая подпись</h3>
+                  <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Цифровая подпись</h3>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
                   {['sign', 'verify'].map(op => (
                     <button
                       key={op}
                       onClick={() => setOperation(op)}
-                      className={`px-4 py-2 rounded-xl font-medium transition-all duration-300 transform hover:scale-105 ${operation === op
+                      className={`px-3 sm:px-4 py-2 rounded-xl font-medium text-sm sm:text-base transition-all duration-300 transform hover:scale-105 ${operation === op
                         ? 'bg-[var(--primary-color)] text-white'
                         : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)]'
                         }`}
@@ -294,9 +294,9 @@ function DigitalSignatures() {
           </div>
         </div>
 
-        <div className="card">
-          <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">Как работают цифровые подписи</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="card p-4 sm:p-6 lg:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-4 sm:mb-6">Как работают цифровые подписи</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
             <div>
               <h4 className="font-semibold text-[var(--text-primary)] mb-3">Процесс подписи:</h4>
               <ol className="space-y-2 text-sm text-[var(--text-secondary)]">

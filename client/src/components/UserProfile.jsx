@@ -83,39 +83,39 @@ function UserProfile({ user, onUserUpdate }) {
     }
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="user-profile" data-file="components/UserProfile.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="user-profile" data-file="components/UserProfile.jsx">
         <div className="section-header">
-          <h2 className="section-title">Личный кабинет</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">Личный кабинет</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Управление профилем пользователя и статистикой активности
           </p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
           <div className="xl:col-span-2">
-            <div className="card">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-2xl flex items-center justify-center">
-                    <div className="icon-user text-2xl text-white"></div>
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 sm:mb-8 gap-4">
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl sm:rounded-2xl flex items-center justify-center">
+                    <div className="icon-user text-xl sm:text-2xl text-white"></div>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-[var(--text-primary)]">Профиль пользователя</h3>
-                    <p className="text-sm text-[var(--text-secondary)]">Основная информация о пользователе</p>
+                    <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Профиль пользователя</h3>
+                    <p className="text-xs sm:text-sm text-[var(--text-secondary)]">Основная информация о пользователе</p>
                   </div>
                 </div>
                 {!isEditing ? (
-                  <button onClick={() => setIsEditing(true)} className="btn-primary">
+                  <button onClick={() => setIsEditing(true)} className="btn-primary w-full sm:w-auto">
                     <div className="icon-edit text-lg mr-2"></div>
                     Редактировать
                   </button>
                 ) : (
-                  <div className="flex space-x-3">
-                    <button onClick={handleSave} className="btn-primary">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+                    <button onClick={handleSave} className="btn-primary w-full sm:w-auto">
                       <div className="icon-check text-lg mr-2"></div>
                       Сохранить
                     </button>
-                    <button onClick={handleCancel} className="btn-secondary">
+                    <button onClick={handleCancel} className="btn-secondary w-full sm:w-auto">
                       <div className="icon-x text-lg mr-2"></div>
                       Отмена
                     </button>
@@ -123,7 +123,7 @@ function UserProfile({ user, onUserUpdate }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Фамилия</label>
@@ -233,9 +233,9 @@ function UserProfile({ user, onUserUpdate }) {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="card-compact">
-              <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Статистика активности</h3>
+          <div className="space-y-4 sm:space-y-6">
+            <div className="card-compact p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">Статистика активности</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-xl">
                   <span className="text-sm font-medium text-[var(--text-primary)]">Операций шифрования</span>
@@ -250,8 +250,8 @@ function UserProfile({ user, onUserUpdate }) {
 
 
 
-            <div className="card-compact">
-              <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Дополнительная информация</h3>
+            <div className="card-compact p-4 sm:p-6">
+              <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">Дополнительная информация</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-[var(--text-primary)]">Дата регистрации</span>

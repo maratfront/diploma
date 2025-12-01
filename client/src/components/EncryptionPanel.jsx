@@ -69,21 +69,21 @@ function EncryptionPanel() {
     };
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="encryption-panel" data-file="components/EncryptionPanel.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="encryption-panel" data-file="components/EncryptionPanel.jsx">
         <div className="section-header">
-          <h2 className="section-title">Криптографическая лаборатория</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">Криптографическая лаборатория</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Профессиональные инструменты для шифрования и защиты данных с поддержкой современных алгоритмов
           </p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="card">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
-                <div className="icon-settings text-xl text-white"></div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+          <div className="card p-4 sm:p-6 lg:p-8">
+            <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
+                <div className="icon-settings text-lg sm:text-xl text-white"></div>
               </div>
-              <h3 className="text-xl font-bold text-[var(--text-primary)]">Настройки операции</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Настройки операции</h3>
             </div>
 
             <div className="space-y-6">
@@ -94,7 +94,7 @@ function EncryptionPanel() {
                     <button
                       key={op}
                       onClick={() => setOperation(op)}
-                      className={`px-4 py-3 rounded-xl font-medium transition-all ${operation === op
+                      className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all ${operation === op
                           ? 'bg-[var(--primary-color)] text-white shadow-lg'
                           : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
                         }`}
@@ -154,12 +154,12 @@ function EncryptionPanel() {
           </div>
 
           <div className="xl:col-span-2">
-            <div className="card">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-12 h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
-                  <div className="icon-terminal text-xl text-white"></div>
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <div className="flex items-center space-x-3 mb-4 sm:mb-6">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
+                  <div className="icon-terminal text-lg sm:text-xl text-white"></div>
                 </div>
-                <h3 className="text-xl font-bold text-[var(--text-primary)]">Обработка данных</h3>
+                <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Обработка данных</h3>
               </div>
 
               <div className="space-y-6">

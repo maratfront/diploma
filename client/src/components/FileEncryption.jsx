@@ -70,17 +70,17 @@ function FileEncryption() {
     };
 
     return (
-      <div className="space-y-8 max-w-7xl mx-auto" data-name="file-encryption" data-file="components/FileEncryption.jsx">
+      <div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="file-encryption" data-file="components/FileEncryption.jsx">
         <div className="section-header">
-          <h2 className="section-title">Шифрование файлов</h2>
-          <p className="section-subtitle">
+          <h2 className="section-title text-2xl sm:text-3xl lg:text-4xl">Шифрование файлов</h2>
+          <p className="section-subtitle text-base sm:text-lg">
             Профессиональное шифрование файлов с поддержкой различных алгоритмов и форматов
           </p>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="card">
-            <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">Настройки шифрования</h3>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+          <div className="card p-4 sm:p-6 lg:p-8">
+            <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-4 sm:mb-6">Настройки шифрования</h3>
 
             <div className="space-y-6">
               <div>
@@ -90,7 +90,7 @@ function FileEncryption() {
                     <button
                       key={op}
                       onClick={() => setOperation(op)}
-                      className={`px-4 py-3 rounded-xl font-medium transition-all ${operation === op
+                      className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all ${operation === op
                           ? 'bg-[var(--primary-color)] text-white shadow-lg'
                           : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
                         }`}
@@ -137,11 +137,11 @@ function FileEncryption() {
           </div>
 
           <div className="xl:col-span-2">
-            <div className="card">
-              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">Загрузка файла</h3>
+            <div className="card p-4 sm:p-6 lg:p-8">
+              <h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)] mb-4 sm:mb-6">Загрузка файла</h3>
 
               <div
-                className={`border-2 border-dashed rounded-2xl p-12 text-center transition-all duration-300 transform hover:scale-105 ${isDragOver
+                className={`border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-12 text-center transition-all duration-300 transform hover:scale-105 ${isDragOver
                     ? 'border-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-5 scale-105'
                     : 'border-[var(--border-color)] hover:border-[var(--primary-color)]'
                   }`}
@@ -149,8 +149,8 @@ function FileEncryption() {
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                 onDragLeave={() => setIsDragOver(false)}
               >
-                <div className="w-20 h-20 bg-[var(--bg-tertiary)] rounded-2xl flex items-center justify-center mx-auto mb-6">
-                  <div className="icon-upload text-3xl text-[var(--text-secondary)]"></div>
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[var(--bg-tertiary)] rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                  <div className="icon-upload text-2xl sm:text-3xl text-[var(--text-secondary)]"></div>
                 </div>
 
                 {selectedFile ? (

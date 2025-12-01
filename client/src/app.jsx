@@ -64,6 +64,29 @@ function App() {
     const [theme, setTheme] = React.useState(() => {
       return localStorage.getItem('theme') || 'light';
     });
+    const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+    // Закрывать sidebar при изменении размера окна на desktop и блокировать скролл body на мобильных
+    React.useEffect(() => {
+      const handleResize = () => {
+        if (window.innerWidth >= 1024) {
+          setSidebarOpen(false);
+        }
+      };
+      
+      // Блокировать скролл body когда sidebar открыт на мобильных
+      if (sidebarOpen && window.innerWidth < 1024) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+      
+      window.addEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        document.body.style.overflow = '';
+      };
+    }, [sidebarOpen]);
 
     React.useEffect(() => {
       const loadUser = async () => {
@@ -100,6 +123,10 @@ function App() {
     const handleViewChange = (view) => {
       setCurrentView(view);
       window.location.hash = view;
+      // Закрывать sidebar на мобильных после выбора пункта
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
     };
 
     const toggleTheme = () => {
@@ -136,13 +163,24 @@ function App() {
 
     return (
       <div className="min-h-screen bg-[var(--bg-secondary)]" data-name="app" data-file="app.js">
-        <Header user={user} theme={theme} onToggleTheme={toggleTheme} onLogout={handleLogout} />
+        <Header 
+          user={user} 
+          theme={theme} 
+          onToggleTheme={toggleTheme} 
+          onLogout={handleLogout}
+          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+        />
 
         <div className="flex flex-col min-h-screen">
-          <div className="flex flex-1">
-            <Sidebar currentView={currentView} onViewChange={handleViewChange} />
+          <div className="flex flex-1 relative">
+            <Sidebar 
+              currentView={currentView} 
+              onViewChange={handleViewChange}
+              isOpen={sidebarOpen}
+              onClose={() => setSidebarOpen(false)}
+            />
 
-            <main className="flex-1 p-6">
+            <main className="flex-1 p-4 sm:p-6 lg:p-6">
               {currentView === 'dashboard' && <Dashboard />}
               {currentView === 'encryption' && <EncryptionPanel />}
               {currentView === 'file-encryption' && <FileEncryption />}

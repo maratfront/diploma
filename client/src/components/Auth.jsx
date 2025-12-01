@@ -66,15 +66,15 @@ function Auth({ onLogin, theme, onToggleTheme }) {
     };
 
     return (
-      <div className="min-h-screen bg-[var(--bg-secondary)] flex items-center justify-center p-6" data-name="auth" data-file="components/Auth.jsx">
+      <div className="min-h-screen bg-[var(--bg-secondary)] flex items-center justify-center p-4 sm:p-6" data-name="auth" data-file="components/Auth.jsx">
         <div className="w-full max-w-md">
-          <div className="card">
-            <div className="text-center mb-8">
-              <div className="w-20 h-20 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <div className="icon-shield text-3xl text-white"></div>
+          <div className="card p-6 sm:p-8">
+            <div className="text-center mb-6 sm:mb-8">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <div className="icon-shield text-2xl sm:text-3xl text-white"></div>
               </div>
-              <h1 className="text-2xl font-bold gradient-text mb-2">CryptoSecure</h1>
-              <p className="text-[var(--text-secondary)]">
+              <h1 className="text-xl sm:text-2xl font-bold gradient-text mb-2">CryptoSecure</h1>
+              <p className="text-sm sm:text-base text-[var(--text-secondary)]">
                 {isLogin ? 'Войдите в систему' : 'Создайте аккаунт'}
               </p>
             </div>
