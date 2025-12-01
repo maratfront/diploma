@@ -12,7 +12,13 @@ from .crypto_service import (
     sign_message_rsa_pss,
     verify_message_rsa_pss,
 )
-from .models import AlgorithmComparison, UserOperationHistory
+from .models import (
+    AlgorithmComparison,
+    UserOperationHistory,
+    WebImplementationExample,
+    CryptoCategory,
+    CryptoAlgorithm,
+)
 from .serializers import (
     AlgorithmComparisonSerializer,
     CryptoRequestSerializer,
@@ -22,6 +28,9 @@ from .serializers import (
     RSAVerifyRequestSerializer,
     RSAVerifyResponseSerializer,
     UserOperationHistorySerializer,
+    WebImplementationExampleSerializer,
+    CryptoCategorySerializer,
+    CryptoAlgorithmSerializer,
 )
 
 
@@ -179,3 +188,37 @@ class UserOperationHistoryView(APIView):
     def delete(self, request):
         UserOperationHistory.objects.filter(user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(
+    tags=['Обучающие материалы'],
+    summary='Примеры веб-реализации криптографии',
+)
+class WebImplementationExampleListView(ListAPIView):
+    """
+    Список примеров веб-реализаций (раздел WebImplementation).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = WebImplementationExampleSerializer
+    queryset = WebImplementationExample.objects.all()
+
+
+@extend_schema(
+    tags=['Обучающие материалы'],
+    summary='Список категорий криптографии для базы знаний',
+)
+class CryptoCategoryListView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CryptoCategorySerializer
+    queryset = CryptoCategory.objects.all()
+
+
+@extend_schema(
+    tags=['Обучающие материалы'],
+    summary='Список криптоалгоритмов для базы знаний',
+)
+class CryptoAlgorithmListView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = CryptoAlgorithmSerializer
+    queryset = CryptoAlgorithm.objects.select_related('category').all()

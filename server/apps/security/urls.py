@@ -7,6 +7,9 @@ from .views import (
     RSASignView,
     RSAVerifyView,
     UserOperationHistoryView,
+    WebImplementationExampleListView,
+    CryptoCategoryListView,
+    CryptoAlgorithmListView,
 )
 
 urlpatterns = [
@@ -16,4 +19,7 @@ urlpatterns = [
     path('rsa/sign/', RSASignView.as_view(), name='rsa-sign'),
     path('rsa/verify/', RSAVerifyView.as_view(), name='rsa-verify'),
     path('history/', UserOperationHistoryView.as_view(), name='user-operation-history'),
+    path('web-implementations/', WebImplementationExampleListView.as_view(), name='web-implementations'),
+    path('crypto-categories/', CryptoCategoryListView.as_view(), name='crypto-categories'),
+    path('crypto-algorithms/', CryptoAlgorithmListView.as_view(), name='crypto-algorithms'),
 ]

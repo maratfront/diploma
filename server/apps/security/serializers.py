@@ -1,6 +1,12 @@
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
-from apps.security.models import AlgorithmComparison, UserOperationHistory
+from apps.security.models import (
+    AlgorithmComparison,
+    UserOperationHistory,
+    WebImplementationExample,
+    CryptoCategory,
+    CryptoAlgorithm,
+)
 
 
 class CryptoRequestSerializer(serializers.Serializer):
@@ -103,3 +109,55 @@ class UserOperationHistorySerializer(serializers.ModelSerializer):
             'timestamp',
         ]
         read_only_fields = ['id', 'timestamp']
+
+
+class WebImplementationExampleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WebImplementationExample
+        fields = [
+            'id',
+            'key',
+            'title',
+            'description',
+            'code',
+        ]
+        read_only_fields = ['id']
+
+
+class CryptoCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CryptoCategory
+        fields = [
+            'id',
+            'key',
+            'title',
+            'description',
+            'icon',
+            'color',
+        ]
+        read_only_fields = ['id']
+
+
+class CryptoAlgorithmSerializer(serializers.ModelSerializer):
+    category_key = serializers.CharField(source='category.key', read_only=True)
+
+    class Meta:
+        model = CryptoAlgorithm
+        fields = [
+            'id',
+            'category',
+            'category_key',
+            'name',
+            'key_size',
+            'security',
+            'speed',
+            'description',
+            'technical_details',
+            'vulnerabilities',
+            'simple_explanation',
+            'real_world_example',
+            'applications',
+            'advantages',
+            'disadvantages',
+        ]
+        read_only_fields = ['id', 'category_key']
