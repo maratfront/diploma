@@ -1,72 +1,81 @@
 import React from 'react'
 
+const API_BASE = 'http://127.0.0.1:8000/api/security';
+
+function adaptAlgorithmsFromApi(data) {
+  if (!Array.isArray(data)) return null;
+
+  const adapted = {};
+
+  data.forEach((item, index) => {
+    if (!item || !item.name) {
+      return;
+    }
+
+    const key = item.id != null ? String(item.id) : `algo_${index}`;
+
+    adapted[key] = {
+      name: item.name,
+      security: Number(item.security ?? 0),
+      speed: Number(item.speed ?? 0),
+      keySize: Number(item.key_size ?? 0),
+      type: item.type || '',
+      year: Number(item.year ?? 0),
+      explanation: item.explanation || '',
+      useCase: item.use_case || ''
+    };
+  });
+
+  return Object.keys(adapted).length ? adapted : null;
+}
+
 function AlgorithmComparison() {
   try {
+    const [algorithms, setAlgorithms] = React.useState();
     const [selectedAlgorithms, setSelectedAlgorithms] = React.useState(['aes', 'chacha20']);
     const [comparisonType, setComparisonType] = React.useState('security');
 
-    const algorithms = {
-      aes: {
-        name: 'AES-256',
-        security: 95,
-        speed: 90,
-        keySize: 256,
-        type: 'Симметричное',
-        year: 2001,
-        explanation: 'Самый популярный алгоритм шифрования. Используется банками, правительствами и в повседневной жизни. Очень надежный и быстрый.',
-        useCase: 'Защита файлов на компьютере, шифрование Wi-Fi сетей, HTTPS'
-      },
-      chacha20: {
-        name: 'ChaCha20',
-        security: 92,
-        speed: 95,
-        keySize: 256,
-        type: 'Потоковое',
-        year: 2008,
-        explanation: 'Современный быстрый алгоритм. Особенно хорош для мобильных устройств и интернет-соединений.',
-        useCase: 'Мессенджеры, VPN, защищенные видеозвонки, TLS 1.3'
-      },
-      blowfish: {
-        name: 'Blowfish',
-        security: 70,
-        speed: 85,
-        keySize: 448,
-        type: 'Блочное',
-        year: 1993,
-        explanation: 'Старый, но все еще используемый алгоритм. Быстрый, но менее безопасный чем современные варианты.',
-        useCase: 'Архивация файлов, старые программы, embedded системы'
-      },
-      twofish: {
-        name: 'Twofish',
-        security: 88,
-        speed: 75,
-        keySize: 128,
-        type: 'Блочное',
-        year: 1998,
-        explanation: 'Финалист конкурса AES. Надежный блочный шифр с хорошей производительностью.',
-        useCase: 'Шифрование дисков, архивация, программы безопасности'
-      },
-      caesar: {
-        name: 'Caesar Cipher',
-        security: 10,
-        speed: 100,
-        keySize: 5,
-        type: 'Классическое',
-        year: -50,
-        explanation: 'Древний шифр, использовавшийся Юлием Цезарем. Очень простой, легко взламывается. Только для обучения.',
-        useCase: 'Образовательные цели, исторические примеры'
-      },
-      base64: {
-        name: 'Base64',
-        security: 0,
-        speed: 100,
-        keySize: 0,
-        type: 'Кодирование',
-        year: 1987,
-        explanation: 'Не шифрование, а способ представления данных. Преобразует бинарные данные в текст.',
-        useCase: 'Передача данных в email, URL, JSON'
+    React.useEffect(() => {
+      async function fetchAlgorithms() {
+        try {
+          const token = localStorage.getItem('accessToken');
+          const res = await fetch(`${API_BASE}/algorithm-comparison/`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          });
+
+          if (!res.ok) {
+            console.error('Failed to load algorithm comparison data from server', res.status);
+            return;
+          }
+
+          const data = await res.json();
+          const adapted = adaptAlgorithmsFromApi(data);
+          if (!adapted) {
+            return;
+          }
+
+          setAlgorithms(adapted);
+
+          setSelectedAlgorithms((prev) => {
+            const validPrev = prev.filter((id) => adapted[id]);
+            if (validPrev.length > 0) {
+              return validPrev;
+            }
+            const keys = Object.keys(adapted);
+            if (keys.length === 0) return [];
+            return keys.slice(0, Math.max(2, prev.length || 2));
+          });
+        } catch (error) {
+          console.error('Error loading algorithm comparison data:', error);
+        }
       }
-    };
+
+      fetchAlgorithms();
+    }, []);
 
     const toggleAlgorithm = (algoId) => {
       if (!algorithms[algoId]) return;
