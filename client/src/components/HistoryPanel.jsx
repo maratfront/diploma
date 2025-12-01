@@ -1,6 +1,7 @@
 import React from 'react'
 import { getEncryptionHistory, exportHistory, clearHistoryOnServer } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
+import { OPERATION_LABELS, OPERATION_ICONS } from '../utils/constants.js'
 
 function HistoryPanel() {
   try {
@@ -73,7 +74,7 @@ function HistoryPanel() {
               </select>
 
               {history.length > 0 && (
-              <button onClick={() => exportHistory(history)} className="btn-secondary">
+                <button onClick={() => exportHistory(history)} className="btn-secondary">
                   <div className="icon-download text-lg mr-2"></div>
                   Экспорт
                 </button>
@@ -112,18 +113,12 @@ function HistoryPanel() {
                     <div className="flex items-center space-x-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
                         }`}>
-                        <div className={`icon-${item.type === 'encrypt' ? 'lock' :
-                          item.type === 'decrypt' ? 'lock-open' :
-                            item.type === 'sign' ? 'pen-tool' :
-                              item.type === 'verify' ? 'shield-check' : 'lock-open'
-                          } text-xl ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
+                        <div className={`icon-${OPERATION_ICONS[item.type] || 'lock-open'} text-xl ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
                           }`}></div>
                       </div>
                       <div>
                         <p className="font-semibold text-[var(--text-primary)] text-lg">
-                          {item.type === 'encrypt' ? 'Шифрование' :
-                            item.type === 'decrypt' ? 'Расшифровка' :
-                              item.type === 'sign' ? 'Подпись' : 'Проверка'}
+                          {OPERATION_LABELS[item.type] || item.type}
                         </p>
                         <p className="text-sm text-[var(--text-secondary)]">
                           Алгоритм: {item.algorithm}

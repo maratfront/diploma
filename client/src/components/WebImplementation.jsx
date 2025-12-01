@@ -1,28 +1,6 @@
 import React from 'react'
-
-const API_BASE = 'http://127.0.0.1:8000/api/security';
-
-function AnimatedCopyButton({ text }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className={`btn-secondary transition-all duration-300 transform hover:scale-105 text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5 ${copied ? 'bg-green-500 text-white scale-110' : ''
-        }`}
-    >
-      <div className={`${copied ? 'icon-check' : 'icon-copy'} text-base sm:text-lg mr-1.5 sm:mr-2 transition-all duration-300`}></div>
-      <span className="hidden sm:inline">{copied ? 'Скопировано!' : 'Копировать код'}</span>
-      <span className="sm:hidden">{copied ? 'Скопировано!' : 'Копировать'}</span>
-    </button>
-  );
-}
+import { fetchWebImplementations } from '../utils/api.js'
+import CopyButton from './common/CopyButton.jsx'
 
 function WebImplementation() {
   try {
@@ -32,21 +10,7 @@ function WebImplementation() {
     React.useEffect(() => {
       async function loadExamples() {
         try {
-          const token = localStorage.getItem('accessToken');
-          const res = await fetch(`${API_BASE}/web-implementations/`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            }
-          });
-
-          if (!res.ok) {
-            console.error('Failed to load web implementations from server', res.status);
-            return;
-          }
-
-          const data = await res.json();
+          const data = await fetchWebImplementations();
           if (!Array.isArray(data)) return;
 
           const fromApi = {};
@@ -73,7 +37,6 @@ function WebImplementation() {
       }
 
       loadExamples();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -99,10 +62,10 @@ function WebImplementation() {
               <p className="text-xs sm:text-sm text-[var(--text-secondary)] line-clamp-2">{example.description}</p>
             </button>
           )) || (
-            <div className="col-span-full text-center py-4">
-              <p className="text-[var(--text-secondary)]">Загрузка примеров...</p>
-            </div>
-          )}
+              <div className="col-span-full text-center py-4">
+                <p className="text-[var(--text-secondary)]">Загрузка примеров...</p>
+              </div>
+            )}
         </div>
 
         <div className="card p-4 sm:p-6 lg:p-8">
@@ -111,7 +74,7 @@ function WebImplementation() {
               {examples && examples[selectedExample]?.title || 'Загрузка...'}
             </h3>
             {examples && examples[selectedExample] && (
-              <AnimatedCopyButton text={examples[selectedExample].code} />
+              <CopyButton text={examples[selectedExample].code} className="text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2.5" />
             )}
           </div>
 
@@ -129,7 +92,6 @@ function WebImplementation() {
                     </pre>
                   </div>
                 </div>
-                {/* Индикатор прокрутки для мобильных */}
                 <div className="sm:hidden absolute bottom-2 right-2 bg-gray-800 bg-opacity-75 text-gray-400 text-[10px] px-2 py-1 rounded">
                   Прокрутите для просмотра
                 </div>

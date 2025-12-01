@@ -1,4 +1,3 @@
-import React from 'react'
 import ThemeToggle from './ThemeToggle.jsx'
 
 function Header({ user, theme, onToggleTheme, onLogout, onMenuToggle }) {
@@ -7,7 +6,6 @@ function Header({ user, theme, onToggleTheme, onLogout, onMenuToggle }) {
       <header className="bg-[var(--bg-primary)] border-b border-[var(--border-color)] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 shadow-md sticky top-0 z-30" data-name="header" data-file="components/Header.jsx">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Mobile menu button */}
             <button
               onClick={onMenuToggle}
               className="lg:hidden w-10 h-10 rounded-xl bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)] flex items-center justify-center transition-colors mr-2"
@@ -15,7 +13,7 @@ function Header({ user, theme, onToggleTheme, onLogout, onMenuToggle }) {
             >
               <div className="icon-menu text-xl text-[var(--text-primary)]"></div>
             </button>
-            
+
             <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
               <div className="icon-shield text-lg sm:text-xl text-white"></div>
             </div>

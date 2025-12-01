@@ -2,6 +2,8 @@ import React from 'react'
 import { encryptText, decryptText } from '../utils/cryptoUtils.js'
 import { addToHistory } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
+import CopyButton from './common/CopyButton.jsx'
+import { ALGORITHM_INFO } from '../utils/constants.js'
 
 function EncryptionPanel() {
   try {
@@ -12,21 +14,12 @@ function EncryptionPanel() {
     const [operation, setOperation] = React.useState('encrypt');
     const [isProcessing, setIsProcessing] = React.useState(false);
 
-    const algorithmInfo = {
-      'aes-gcm': { name: 'AES-256', description: 'Современный стандарт шифрования (используется в банках, HTTPS, WhatsApp)', security: 'Очень высокая' },
-      'chacha20': { name: 'ChaCha20', description: 'Быстрый потоковый шифр (используется в TLS, VPN, современных приложениях)', security: 'Очень высокая' },
-      'blowfish': { name: 'Blowfish', description: 'Блочный шифр с переменным ключом (используется в архивации, embedded системах)', security: 'Средняя' },
-      'twofish': { name: 'Twofish', description: '128-битный блочный шифр (финалист конкурса AES)', security: 'Высокая' },
-      'caesar': { name: 'Caesar Cipher', description: 'Шифр сдвига для обучения (не для реального использования)', security: 'Очень низкая' },
-      base64: { name: 'Base64', description: 'Кодирование данных (не шифрование, используется для передачи данных)', security: 'Нет защиты' }
-    };
 
     const handleProcess = async () => {
       if (!inputText.trim()) return;
 
       setIsProcessing(true);
 
-      // Simulate processing delay for better UX
       await new Promise(resolve => setTimeout(resolve, 500));
 
       let result = '';
@@ -95,8 +88,8 @@ function EncryptionPanel() {
                       key={op}
                       onClick={() => setOperation(op)}
                       className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all ${operation === op
-                          ? 'bg-[var(--primary-color)] text-white shadow-lg'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
+                        ? 'bg-[var(--primary-color)] text-white shadow-lg'
+                        : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
                         }`}
                     >
                       {op === 'encrypt' ? 'Шифрование' : 'Расшифровка'}
@@ -120,10 +113,10 @@ function EncryptionPanel() {
                   <option value="base64">Base64 (Кодирование)</option>
                 </select>
                 <div className="mt-3 p-3 bg-[var(--bg-tertiary)] rounded-xl">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">{algorithmInfo[algorithm].name}</p>
-                  <p className="text-xs text-[var(--text-secondary)]">{algorithmInfo[algorithm].description}</p>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">{ALGORITHM_INFO[algorithm]?.name}</p>
+                  <p className="text-xs text-[var(--text-secondary)]">{ALGORITHM_INFO[algorithm]?.description}</p>
                   <p className="text-xs text-[var(--accent-color)] font-medium">
-                    Безопасность: {algorithmInfo[algorithm].security}
+                    Безопасность: {ALGORITHM_INFO[algorithm]?.security}
                   </p>
                 </div>
               </div>
@@ -225,28 +218,6 @@ function EncryptionPanel() {
     console.error('EncryptionPanel component error:', error);
     return null;
   }
-}
-
-// Copy button with animation
-function CopyButton({ text }) {
-  const [copied, setCopied] = React.useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className={`btn-secondary transition-all duration-300 ${copied ? 'bg-green-500 text-white transform scale-110' : ''
-        }`}
-    >
-      <div className={`${copied ? 'icon-check' : 'icon-copy'} text-lg mr-2 transition-all duration-300`}></div>
-      {copied ? 'Скопировано!' : 'Копировать'}
-    </button>
-  );
 }
 
 export default EncryptionPanel

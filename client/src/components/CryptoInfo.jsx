@@ -1,6 +1,5 @@
 import React from 'react'
-
-const API_BASE = 'http://127.0.0.1:8000/api/security';
+import { fetchCryptoCategories, fetchCryptoAlgorithms } from '../utils/api.js'
 
 function CryptoInfo() {
   try {
@@ -14,73 +13,53 @@ function CryptoInfo() {
     React.useEffect(() => {
       async function loadCryptoInfo() {
         try {
-          const token = localStorage.getItem('accessToken');
-
-          const [catRes, algoRes] = await Promise.all([
-            fetch(`${API_BASE}/crypto-categories/`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-              }
-            }),
-            fetch(`${API_BASE}/crypto-algorithms/`, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-              }
-            }),
+          const [catData, algoData] = await Promise.all([
+            fetchCryptoCategories(),
+            fetchCryptoAlgorithms()
           ]);
 
-          if (catRes.ok) {
-            const catData = await catRes.json();
-            if (Array.isArray(catData)) {
-              const cats = {};
-              catData.forEach(c => {
-                if (!c || !c.key) return;
-                cats[c.key] = {
-                  title: c.title,
-                  description: c.description,
-                  icon: c.icon,
-                  color: c.color,
-                };
-              });
-              if (Object.keys(cats).length > 0) {
-                setCryptoCategories(prev => ({ ...prev, ...cats }));
-              }
+          if (Array.isArray(catData)) {
+            const cats = {};
+            catData.forEach(c => {
+              if (!c || !c.key) return;
+              cats[c.key] = {
+                title: c.title,
+                description: c.description,
+                icon: c.icon,
+                color: c.color,
+              };
+            });
+            if (Object.keys(cats).length > 0) {
+              setCryptoCategories(prev => ({ ...prev, ...cats }));
             }
           }
 
-          if (algoRes.ok) {
-            const algoData = await algoRes.json();
-            if (Array.isArray(algoData)) {
-              const byCategory = {};
-              algoData.forEach(a => {
-                const key = a.category_key;
-                if (!key) return;
-                if (!byCategory[key]) byCategory[key] = [];
-                byCategory[key].push({
-                  name: a.name,
-                  keySize: a.key_size,
-                  security: a.security,
-                  speed: a.speed,
-                  description: a.description,
-                  technicalDetails: a.technical_details,
-                  vulnerabilities: a.vulnerabilities,
-                  simpleExplanation: a.simple_explanation,
-                  realWorldExample: a.real_world_example,
-                  applications: a.applications || [],
-                  advantages: a.advantages || [],
-                  disadvantages: a.disadvantages || [],
-                });
+          if (Array.isArray(algoData)) {
+            const byCategory = {};
+            algoData.forEach(a => {
+              const key = a.category_key;
+              if (!key) return;
+              if (!byCategory[key]) byCategory[key] = [];
+              byCategory[key].push({
+                name: a.name,
+                keySize: a.key_size,
+                security: a.security,
+                speed: a.speed,
+                description: a.description,
+                technicalDetails: a.technical_details,
+                vulnerabilities: a.vulnerabilities,
+                simpleExplanation: a.simple_explanation,
+                realWorldExample: a.real_world_example,
+                applications: a.applications || [],
+                advantages: a.advantages || [],
+                disadvantages: a.disadvantages || [],
               });
+            });
 
-              setAlgorithms(prev => ({
-                ...prev,
-                ...byCategory,
-              }));
-            }
+            setAlgorithms(prev => ({
+              ...prev,
+              ...byCategory,
+            }));
           }
         } catch (e) {
           console.error('Error loading crypto info from server:', e);
@@ -88,7 +67,6 @@ function CryptoInfo() {
       }
 
       loadCryptoInfo();
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return (
@@ -127,10 +105,10 @@ function CryptoInfo() {
               </p>
             </button>
           )) || (
-            <div className="col-span-full text-center py-4">
-              <p className="text-[var(--text-secondary)]">Загрузка категорий...</p>
-            </div>
-          )}
+              <div className="col-span-full text-center py-4">
+                <p className="text-[var(--text-secondary)]">Загрузка категорий...</p>
+              </div>
+            )}
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
@@ -166,12 +144,12 @@ function CryptoInfo() {
                     </div>
                   </button>
                 )) || (
-                  <div className="text-center py-8">
-                    <p className="text-[var(--text-secondary)]">
-                      {algorithms ? 'Алгоритмы не найдены' : 'Загрузка алгоритмов...'}
-                    </p>
-                  </div>
-                )}
+                    <div className="text-center py-8">
+                      <p className="text-[var(--text-secondary)]">
+                        {algorithms ? 'Алгоритмы не найдены' : 'Загрузка алгоритмов...'}
+                      </p>
+                    </div>
+                  )}
               </div>
             </div>
           </div>

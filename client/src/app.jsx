@@ -10,46 +10,10 @@ import WebImplementation from './components/WebImplementation.jsx'
 import HistoryPanel from './components/HistoryPanel.jsx'
 import CryptoInfo from './components/CryptoInfo.jsx'
 import UserProfile from './components/UserProfile.jsx'
-import ThemeToggle from './components/ThemeToggle.jsx'
 import Auth from './components/Auth.jsx'
 import Footer from './components/Footer.jsx'
 import { AuthService } from './utils/auth.js'
-
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo.componentStack);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">We're sorry, but something unexpected happened.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="btn btn-black"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+import { useTheme } from './hooks/useTheme.js'
 
 function App() {
   try {
@@ -61,26 +25,22 @@ function App() {
       return AuthService.isAuthenticated();
     });
     const [user, setUser] = React.useState(null);
-    const [theme, setTheme] = React.useState(() => {
-      return localStorage.getItem('theme') || 'light';
-    });
+    const { theme, toggleTheme } = useTheme();
     const [sidebarOpen, setSidebarOpen] = React.useState(false);
 
-    // Закрывать sidebar при изменении размера окна на desktop и блокировать скролл body на мобильных
     React.useEffect(() => {
       const handleResize = () => {
         if (window.innerWidth >= 1024) {
           setSidebarOpen(false);
         }
       };
-      
-      // Блокировать скролл body когда sidebar открыт на мобильных
+
       if (sidebarOpen && window.innerWidth < 1024) {
         document.body.style.overflow = 'hidden';
       } else {
         document.body.style.overflow = '';
       }
-      
+
       window.addEventListener('resize', handleResize);
       return () => {
         window.removeEventListener('resize', handleResize);
@@ -103,10 +63,6 @@ function App() {
       loadUser();
     }, [isAuthenticated]);
 
-    React.useEffect(() => {
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
-    }, [theme]);
 
     React.useEffect(() => {
       const handleHashChange = () => {
@@ -123,15 +79,11 @@ function App() {
     const handleViewChange = (view) => {
       setCurrentView(view);
       window.location.hash = view;
-      // Закрывать sidebar на мобильных после выбора пункта
       if (window.innerWidth < 1024) {
         setSidebarOpen(false);
       }
     };
 
-    const toggleTheme = () => {
-      setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-    };
 
     const handleLogin = (userData) => {
       if (userData) {
@@ -163,18 +115,18 @@ function App() {
 
     return (
       <div className="min-h-screen bg-[var(--bg-secondary)]" data-name="app" data-file="app.js">
-        <Header 
-          user={user} 
-          theme={theme} 
-          onToggleTheme={toggleTheme} 
+        <Header
+          user={user}
+          theme={theme}
+          onToggleTheme={toggleTheme}
           onLogout={handleLogout}
           onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
         />
 
         <div className="flex flex-col min-h-screen">
           <div className="flex flex-1 relative">
-            <Sidebar 
-              currentView={currentView} 
+            <Sidebar
+              currentView={currentView}
               onViewChange={handleViewChange}
               isOpen={sidebarOpen}
               onClose={() => setSidebarOpen(false)}
@@ -202,5 +154,4 @@ function App() {
   }
 }
 
-export { ErrorBoundary }
 export default App

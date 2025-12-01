@@ -1,5 +1,6 @@
 import React from 'react'
 import { getEncryptionHistory } from '../utils/storage.js'
+import { OPERATION_LABELS, OPERATION_ICONS } from '../utils/constants.js'
 
 function Dashboard() {
   try {
@@ -138,20 +139,14 @@ function Dashboard() {
               ) : (
                 recentHistory.map((item, index) => (
                   <div key={index} className="flex items-center space-x-3 p-3 bg-[var(--bg-tertiary)] rounded-xl">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'encrypt' || item.type === 'sign' ? 'bg-green-100' : 'bg-blue-100'
                       }`}>
-                      <div className={`icon-${item.type === 'encrypt' ? 'lock' :
-                        item.type === 'decrypt' ? 'lock-open' :
-                          item.type === 'sign' ? 'pen-tool' :
-                            item.type === 'verify' ? 'shield-check' : 'lock-open'
-                        } text-lg ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
+                      <div className={`icon-${OPERATION_ICONS[item.type] || 'lock-open'} text-lg ${item.type === 'encrypt' || item.type === 'sign' ? 'text-green-600' : 'text-blue-600'
                         }`}></div>
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-[var(--text-primary)] text-sm">
-                        {item.type === 'encrypt' ? 'Шифрование' :
-                          item.type === 'decrypt' ? 'Расшифровка' :
-                            item.type === 'sign' ? 'Подпись' : 'Проверка'}
+                        {OPERATION_LABELS[item.type] || item.type}
                       </p>
                       <p className="text-xs text-[var(--text-secondary)]">{item.algorithm}</p>
                     </div>

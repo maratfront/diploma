@@ -1,5 +1,3 @@
-import React from 'react'
-
 function ThemeToggle({ theme, onToggle }) {
   try {
     return (

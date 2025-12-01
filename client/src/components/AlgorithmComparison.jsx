@@ -1,6 +1,5 @@
 import React from 'react'
-
-const API_BASE = 'http://127.0.0.1:8000/api/security';
+import { fetchAlgorithms } from '../utils/api.js'
 
 function adaptAlgorithmsFromApi(data) {
   if (!Array.isArray(data)) return null;
@@ -36,23 +35,9 @@ function AlgorithmComparison() {
     const [comparisonType, setComparisonType] = React.useState('security');
 
     React.useEffect(() => {
-      async function fetchAlgorithms() {
+      async function loadAlgorithms() {
         try {
-          const token = localStorage.getItem('accessToken');
-          const res = await fetch(`${API_BASE}/algorithm-comparison/`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            }
-          });
-
-          if (!res.ok) {
-            console.error('Failed to load algorithm comparison data from server', res.status);
-            return;
-          }
-
-          const data = await res.json();
+          const data = await fetchAlgorithms();
           const adapted = adaptAlgorithmsFromApi(data);
           if (!adapted) {
             return;
@@ -74,7 +59,7 @@ function AlgorithmComparison() {
         }
       }
 
-      fetchAlgorithms();
+      loadAlgorithms();
     }, []);
 
     const toggleAlgorithm = (algoId) => {
@@ -117,15 +102,14 @@ function AlgorithmComparison() {
                 <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] mt-0.5 sm:mt-1 line-clamp-1">{algo.type}</p>
               </button>
             )) || (
-              <div className="col-span-full text-center py-4">
-                <p className="text-[var(--text-secondary)]">Загрузка алгоритмов...</p>
-              </div>
-            )}
+                <div className="col-span-full text-center py-4">
+                  <p className="text-[var(--text-secondary)]">Загрузка алгоритмов...</p>
+                </div>
+              )}
           </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {/* Mobile: горизонтальный скролл для типа сравнения */}
           <div className="xl:hidden">
             <h3 className="text-sm sm:text-base font-bold text-[var(--text-primary)] mb-3">Тип сравнения</h3>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 sm:mx-0 px-4 sm:px-0">
@@ -150,7 +134,6 @@ function AlgorithmComparison() {
             </div>
           </div>
 
-          {/* Desktop: вертикальный список */}
           <div className="hidden xl:block card-compact p-4 sm:p-6">
             <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">Тип сравнения</h3>
             <div className="space-y-2">
@@ -229,8 +212,7 @@ function AlgorithmComparison() {
         <div className="space-y-4 sm:space-y-6">
           <div className="card p-4 sm:p-6 lg:p-8">
             <h3 className="text-base sm:text-lg lg:text-xl font-bold text-[var(--text-primary)] mb-3 sm:mb-4 lg:mb-6">Детальная таблица сравнения</h3>
-            
-            {/* Mobile: карточки вместо таблицы */}
+
             <div className="block md:hidden space-y-3">
               {algorithms && selectedAlgorithms.filter(algoId => algorithms[algoId]).map(algoId => {
                 const algo = algorithms[algoId];
@@ -268,7 +250,6 @@ function AlgorithmComparison() {
               })}
             </div>
 
-            {/* Desktop: таблица */}
             <div className="hidden md:block overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
               <table className="w-full min-w-[600px]">
                 <thead>

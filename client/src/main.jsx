@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App, { ErrorBoundary } from './app.jsx'
+import App from './app.jsx'
+import ErrorBoundary from './components/common/ErrorBoundary.jsx'
 import './assets/tailwind.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -10,4 +11,3 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </ErrorBoundary>
   </React.StrictMode>
 )
-
