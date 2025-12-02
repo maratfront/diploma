@@ -3,7 +3,7 @@ import ThemeToggle from './ThemeToggle.jsx'
 function Header({ user, theme, onToggleTheme, onLogout, onMenuToggle }) {
   try {
     return (
-      <header className="bg-[var(--bg-primary)] border-b border-[var(--border-color)] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 shadow-md sticky top-0 z-30" data-name="header" data-file="components/Header.jsx">
+      <header className="bg-[var(--bg-primary)] border-b border-[var(--border-color)] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 shadow-md top-0 z-30" data-name="header" data-file="components/Header.jsx">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <button
