@@ -18,7 +18,7 @@ function Sidebar({ currentView, onViewChange, isOpen, onClose }) {
         )}
 
         <aside
-          className={`fixed lg:static inset-y-0 left-0 w-80 bg-[var(--bg-primary)] border-r border-[var(--border-color)] min-h-screen shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          className={`fixed lg:static inset-y-0 left-0 w-80 bg-[var(--bg-primary)] border-r border-[var(--border-color)] min-h-screen shadow-lg z-auto transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
             }`}
           data-name="sidebar"
           data-file="components/Sidebar.jsx"

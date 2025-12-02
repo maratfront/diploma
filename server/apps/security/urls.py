@@ -1,6 +1,5 @@
 from django.urls import path
-
-from .views import (
+from apps.security.views import (
     AlgorithmComparisonListView,
     CryptoProcessView,
     RSAGenerateKeyPairView,
@@ -11,6 +10,7 @@ from .views import (
     CryptoCategoryListView,
     CryptoAlgorithmListView,
 )
+
 
 urlpatterns = [
     path('algorithm-comparison/', AlgorithmComparisonListView.as_view(), name='algorithm-comparison'),

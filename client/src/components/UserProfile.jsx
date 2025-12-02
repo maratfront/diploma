@@ -1,9 +1,11 @@
 import React from 'react'
 import { NotificationManager } from './Notification.jsx'
+import { getEncryptionHistory } from '../utils/storage.js'
 
 function UserProfile({ user, onUserUpdate }) {
   try {
     const [isEditing, setIsEditing] = React.useState(false);
+    const [history, setHistory] = React.useState([]);
     const [formData, setFormData] = React.useState({
       email: user?.email || '',
       first_name: user?.first_name || '',
@@ -27,6 +29,23 @@ function UserProfile({ user, onUserUpdate }) {
         });
       }
     }, [user]);
+
+    React.useEffect(() => {
+      let isMounted = true;
+
+      const loadHistory = async () => {
+        const history = await getEncryptionHistory();
+        if (!isMounted) return;
+
+        setHistory(history);
+      };
+
+      loadHistory();
+
+      return () => {
+        isMounted = false;
+      };
+    }, []);
 
     const handleSave = async () => {
       try {
@@ -239,7 +258,7 @@ function UserProfile({ user, onUserUpdate }) {
               <div className="space-y-4">
                 <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-xl">
                   <span className="text-sm font-medium text-[var(--text-primary)]">Операций шифрования</span>
-                  <span className="text-lg font-bold text-[var(--primary-color)]">12</span>
+                  <span className="text-lg font-bold text-[var(--primary-color)]">{history.length}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-[var(--bg-tertiary)] rounded-xl">
                   <span className="text-sm font-medium text-[var(--text-primary)]">Последний вход</span>
