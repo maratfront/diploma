@@ -35,16 +35,6 @@ function Sidebar({ currentView, onViewChange, isOpen, onClose }) {
               </button>
             </div>
 
-            <div className='flex flex-row items-center space-x-2 sm:space-x-3 mb-6'>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
-                <div className="icon-shield text-lg sm:text-xl text-white"></div>
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold gradient-text">CryptoSecure</h1>
-                <p className="text-xs text-[var(--text-secondary)] hidden sm:block">Система активна</p>
-              </div>
-            </div>
-
             <div className="mb-8 hidden lg:block">
               <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">Навигация</h2>
               <p className="text-sm text-[var(--text-secondary)]">Выберите раздел для работы</p>
