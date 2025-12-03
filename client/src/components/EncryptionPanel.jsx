@@ -4,6 +4,7 @@ import { addToHistory } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
 import CopyButton from './common/CopyButton.jsx'
 import { ALGORITHM_INFO } from '../utils/constants.js'
+import KeyGeneratorModal from './KeyGeneratorModal.jsx'
 
 function EncryptionPanel() {
   try {
@@ -13,6 +14,7 @@ function EncryptionPanel() {
     const [key, setKey] = React.useState('');
     const [operation, setOperation] = React.useState('encrypt');
     const [isProcessing, setIsProcessing] = React.useState(false);
+    const [isKeyGeneratorOpen, setIsKeyGeneratorOpen] = React.useState(false);
 
 
     const handleProcess = async () => {
@@ -123,9 +125,21 @@ function EncryptionPanel() {
 
               {algorithm !== 'base64' && (
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-                    {algorithm === 'caesar' ? 'Сдвиг (число от 1 до 25)' : 'Ключ шифрования'}
-                  </label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-[var(--text-primary)]">
+                      {algorithm === 'caesar' ? 'Сдвиг (число от 1 до 25)' : 'Ключ шифрования'}
+                    </label>
+                    {algorithm !== 'caesar' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsKeyGeneratorOpen(true)}
+                        className="text-xs font-semibold text-[var(--primary-color)] hover:text-[var(--accent-color)] flex items-center space-x-1"
+                      >
+                        <div className="icon-key text-sm"></div>
+                        <span>Генератор ключей</span>
+                      </button>
+                    )}
+                  </div>
                   <input
                     type={algorithm === 'caesar' ? 'number' : 'password'}
                     value={key}
@@ -212,6 +226,15 @@ function EncryptionPanel() {
             </div>
           </div>
         </div>
+
+        <KeyGeneratorModal
+          isOpen={isKeyGeneratorOpen}
+          onClose={() => setIsKeyGeneratorOpen(false)}
+          onKeyGenerated={(generatedKey) => {
+            setKey(generatedKey);
+            NotificationManager.info('Ключ автоматически подставлен');
+          }}
+        />
       </div>
     );
   } catch (error) {

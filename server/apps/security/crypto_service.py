@@ -9,6 +9,7 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.Signature import pss
 from Crypto.Util.Padding import pad, unpad
+from .twofish_cipher import Twofish
 
 
 class CryptoServiceError(Exception):
@@ -217,64 +218,64 @@ class CryptoEngine:
 
     # Twofish
     def _twofish_encrypt(self, payload: str) -> str:
-        try:
-            key_bytes = _derive_bytes(self._require_key(), 32)
+        key_bytes = _derive_bytes(self._require_key(), 32)
+        iv = _generate_secure_random_bytes(16)
+        cipher = Twofish(key_bytes)
+        plaintext_bytes = payload.encode("utf-8")
+        padded_data = pad(plaintext_bytes, Twofish.BLOCK_SIZE)
 
-            from Crypto.Cipher import Twofish
+        ciphertext = b""
+        prev_block = iv
 
-            iv = _generate_secure_random_bytes(16)
-            cipher = Twofish.new(key_bytes)
-            padded_data = pad(payload.encode("utf-8"), Twofish.block_size)
-            blocks = [padded_data[i:i+16] for i in range(0, len(padded_data), 16)]
-            ciphertext = b""
-            prev = iv
-            
-            for block in blocks:
-                xored = bytes(a ^ b for a, b in zip(block, prev))
-                encrypted = cipher.encrypt(xored)
-                ciphertext += encrypted
-                prev = encrypted
+        for i in range(0, len(padded_data), Twofish.BLOCK_SIZE):
+            block = padded_data[i:i + Twofish.BLOCK_SIZE]
+            xored_block = bytes(a ^ b for a, b in zip(block, prev_block))
+            encrypted_block = cipher.encrypt_block(xored_block)
+            ciphertext += encrypted_block
+            prev_block = encrypted_block
 
-            return _b64_encode(iv + ciphertext)
-            
-        except ImportError:
-            key_bytes = _derive_bytes(self._require_key(), 32)
-            iv = _generate_secure_random_bytes(AES.block_size)
-            cipher = AES.new(key_bytes, AES.MODE_CBC, iv=iv)
-            ciphertext = cipher.encrypt(pad(payload.encode("utf-8"), AES.block_size))
-            return _b64_encode(iv + ciphertext)
+        return _b64_encode(iv + ciphertext)
 
     def _twofish_decrypt(self, payload: str) -> str:
+        key_bytes = _derive_bytes(self._require_key(), 32)
+
         try:
-            key_bytes = _derive_bytes(self._require_key(), 32)
-            
-            from Crypto.Cipher import Twofish
-            
             data = _b64_decode(payload)
-            iv, ciphertext = data[:16], data[16:]
-            
-            cipher = Twofish.new(key_bytes)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 encoding: {e}")
 
-            blocks = [ciphertext[i:i+16] for i in range(0, len(ciphertext), 16)]
-            plaintext = b""
-            prev = iv
-            
-            for block in blocks:
-                decrypted = cipher.decrypt(block)
-                xored = bytes(a ^ b for a, b in zip(decrypted, prev))
-                plaintext += xored
-                prev = block
+        if len(data) < 16 + 16:
+            raise ValueError("Data too short")
 
-            unpadded = unpad(plaintext, Twofish.block_size)
+        iv = data[:16]
+        ciphertext = data[16:]
+
+        if len(ciphertext) % Twofish.BLOCK_SIZE != 0:
+            raise ValueError(f"Ciphertext length {len(ciphertext)} not multiple of block size {Twofish.BLOCK_SIZE}")
+
+        cipher = Twofish(key_bytes)
+        plaintext = b""
+        prev_block = iv
+
+        for i in range(0, len(ciphertext), Twofish.BLOCK_SIZE):
+            block = ciphertext[i:i + Twofish.BLOCK_SIZE]
+            decrypted_block = cipher.decrypt_block(block)
+            plain_block = bytes(a ^ b for a, b in zip(decrypted_block, prev_block))
+            plaintext += plain_block
+            prev_block = block
+
+        try:
+            unpadded = unpad(plaintext, Twofish.BLOCK_SIZE)
+        except ValueError as e:
+            print(f"Padding error: {e}")
+            print(f"Plaintext length: {len(plaintext)}")
+            print(f"Plaintext hex: {plaintext.hex()}")
+            raise ValueError(f"Padding error: {e}")
+
+        try:
             return unpadded.decode("utf-8")
-            
-        except ImportError:
-            key_bytes = _derive_bytes(self._require_key(), 32)
-            data = _b64_decode(payload)
-            iv, ciphertext = data[:AES.block_size], data[AES.block_size:]
-            cipher = AES.new(key_bytes, AES.MODE_CBC, iv=iv)
-            plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
-            return plaintext.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise ValueError(f"Decrypted data is not valid UTF-8: {e}")
 
     # Caesar
     def _caesar_encrypt(self, payload: str) -> str:
