@@ -4,6 +4,7 @@ import { addToHistory } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
 import CopyButton from './common/CopyButton.jsx'
 import { ALGORITHM_INFO } from '../utils/constants.js'
+import KeyGeneratorModal from './KeyGeneratorModal.jsx'
 
 function EncryptionPanel() {
   try {
@@ -13,10 +14,30 @@ function EncryptionPanel() {
     const [key, setKey] = React.useState('');
     const [operation, setOperation] = React.useState('encrypt');
     const [isProcessing, setIsProcessing] = React.useState(false);
-
+    const [isKeyGeneratorOpen, setIsKeyGeneratorOpen] = React.useState(false);
 
     const handleProcess = async () => {
-      if (!inputText.trim()) return;
+      if (!inputText.trim()) {
+        NotificationManager.warning('Введите текст для обработки');
+        return;
+      }
+
+      // Валидация ключа
+      if (algorithm !== 'base64' && algorithm !== 'caesar') {
+        if (!key.trim()) {
+          NotificationManager.error('Введите ключ шифрования');
+          return;
+        }
+        if (key.length < 8) {
+          NotificationManager.warning('Ключ должен содержать минимум 8 символов');
+          return;
+        }
+      }
+
+      if (algorithm === 'caesar' && (!key || parseInt(key) < 1 || parseInt(key) > 25)) {
+        NotificationManager.error('Сдвиг должен быть числом от 1 до 25');
+        return;
+      }
 
       setIsProcessing(true);
 
@@ -53,6 +74,15 @@ function EncryptionPanel() {
       } finally {
         setIsProcessing(false);
       }
+    };
+
+    const validateCaesarKey = (value) => {
+      if (value === '') return '';
+      const num = parseInt(value, 10);
+      if (isNaN(num)) return '';
+      if (num < 1) return '1';
+      if (num > 25) return '25';
+      return num.toString();
     };
 
     const clearFields = () => {
@@ -123,13 +153,32 @@ function EncryptionPanel() {
 
               {algorithm !== 'base64' && (
                 <div>
-                  <label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-                    {algorithm === 'caesar' ? 'Сдвиг (число от 1 до 25)' : 'Ключ шифрования'}
-                  </label>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="block text-sm font-semibold text-[var(--text-primary)]">
+                      {algorithm === 'caesar' ? 'Сдвиг (число от 1 до 25)' : 'Ключ шифрования'}
+                    </label>
+                    {algorithm !== 'caesar' && (
+                      <button
+                        type="button"
+                        onClick={() => setIsKeyGeneratorOpen(true)}
+                        className="text-xs font-semibold text-[var(--primary-color)] hover:text-[var(--accent-color)] flex items-center space-x-1"
+                      >
+                        <div className="icon-key text-sm"></div>
+                        <span>Генератор ключей</span>
+                      </button>
+                    )}
+                  </div>
+
                   <input
                     type={algorithm === 'caesar' ? 'number' : 'password'}
                     value={key}
-                    onChange={(e) => setKey(e.target.value)}
+                    onChange={(e) => {
+                      if (algorithm === 'caesar') {
+                        setKey(validateCaesarKey(e.target.value));
+                      } else {
+                        setKey(e.target.value);
+                      }
+                    }}
                     className="input-field"
                     placeholder={algorithm === 'caesar' ? 'Введите число сдвига (например, 3)' : 'Введите надежный пароль'}
                     min={algorithm === 'caesar' ? '1' : undefined}
@@ -212,6 +261,15 @@ function EncryptionPanel() {
             </div>
           </div>
         </div>
+
+        <KeyGeneratorModal
+          isOpen={isKeyGeneratorOpen}
+          onClose={() => setIsKeyGeneratorOpen(false)}
+          onKeyGenerated={(generatedKey) => {
+            setKey(generatedKey);
+            NotificationManager.info('Ключ автоматически подставлен');
+          }}
+        />
       </div>
     );
   } catch (error) {
