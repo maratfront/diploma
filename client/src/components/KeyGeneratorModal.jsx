@@ -377,21 +377,37 @@ function PasswordResult({ generatedKey, strength, entropy, onGenerate, onUseKey,
 
           {showHistory && (
             <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
-              {history.map((entry, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => onSelectFromHistory(entry.password)}
-                  className="p-3 bg-[var(--bg-primary)] rounded-lg cursor-pointer hover:bg-[var(--bg-tertiary)] transition-all"
-                >
-                  <p className="text-sm font-mono text-[var(--text-primary)] break-all mb-1">
-                    {entry.password.substring(0, 40)}{entry.password.length > 40 ? '...' : ''}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-                    <span>{entry.strength.label}</span>
-                    <span>{new Date(entry.timestamp).toLocaleTimeString()}</span>
+              {history.map((entry, idx) => {
+                // Безопасное получение пароля из записи
+                const password = entry.password || entry.hashedPassword || '';
+                // Безопасное получение метки надежности
+                const strengthLabel = entry.strength?.label || 'Н/Д';
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => {
+                      // Проверяем, есть ли оригинальный пароль для подстановки
+                      if (entry.password) {
+                        onSelectFromHistory(entry.password);
+                      } else if (entry.hashedPassword) {
+                        // Если есть только хеш, показываем сообщение
+                        console.warn('Cannot use hashed password from history');
+                        NotificationManager.warning('Нельзя использовать сохраненный хешированный пароль');
+                      }
+                    }}
+                    className="p-3 bg-[var(--bg-primary)] rounded-lg cursor-pointer hover:bg-[var(--bg-tertiary)] transition-all"
+                  >
+                    <p className="text-sm font-mono text-[var(--text-primary)] break-all mb-1">
+                      {password.substring(0, 40)}{password.length > 40 ? '...' : ''}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                      <span>{strengthLabel}</span>
+                      <span>{entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString() : 'Н/Д'}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <button onClick={onClearHistory} className="btn-secondary w-full text-sm">
                 <div className="icon-trash-2 text-sm mr-2"></div>
                 Очистить историю

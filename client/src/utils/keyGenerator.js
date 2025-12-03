@@ -145,43 +145,27 @@ class KeyGenerator {
     return passphrase.join(separator);
   }
 
-  static async saveToHistory(password) {
+  static saveToHistory(password) {
     try {
-      if (typeof localStorage === 'undefined') return;
-
-      const hashedPassword = await this.hashPassword(password);
-      const history = JSON.parse(localStorage.getItem('password_history') || '[]');
-
-      const alreadyExists = history.some(entry =>
-        entry.hashedPassword === hashedPassword
-      );
-
-      if (!alreadyExists) {
-        const entry = {
-          hashedPassword,
-          timestamp: Date.now(),
-          strength: this.assessKeyStrength(password),
-          displayPrefix: password.substring(0, 3) + '***'
-        };
-
-        history.unshift(entry);
-        if (history.length > 10) history.pop();
-        localStorage.setItem('password_history', JSON.stringify(history));
+      if (typeof localStorage === 'undefined') {
+        return;
       }
+      const history = JSON.parse(localStorage.getItem('password_history') || '[]');
+      const entry = {
+        password, // Сохраняем оригинальный пароль (не хешированный)
+        timestamp: Date.now(),
+        strength: this.assessKeyStrength(password)
+      };
+
+      // Удаляем старые записи с неверной структурой
+      const cleanHistory = history.filter(item => item.password);
+
+      cleanHistory.unshift(entry);
+      if (cleanHistory.length > 10) cleanHistory.pop();
+
+      localStorage.setItem('password_history', JSON.stringify(cleanHistory));
     } catch (e) {
       console.error('Error saving to history:', e);
-    }
-  }
-
-  static async hashPassword(password) {
-    try {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    } catch {
-      return btoa(password).substring(0, 32);
     }
   }
 
@@ -190,17 +174,24 @@ class KeyGenerator {
       if (typeof localStorage === 'undefined') {
         return [];
       }
-      return JSON.parse(localStorage.getItem('password_history') || '[]');
+      const history = JSON.parse(localStorage.getItem('password_history') || '[]');
+      // Фильтруем только валидные записи
+      return history.filter(item => item.password && item.timestamp && item.strength);
     } catch (e) {
+      console.error('Error getting history:', e);
       return [];
     }
   }
 
   static clearHistory() {
-    if (typeof localStorage === 'undefined') {
-      return;
+    try {
+      if (typeof localStorage === 'undefined') {
+        return;
+      }
+      localStorage.removeItem('password_history');
+    } catch (e) {
+      console.error('Error clearing history:', e);
     }
-    localStorage.removeItem('password_history');
   }
 
   static calculateEntropy(password) {
