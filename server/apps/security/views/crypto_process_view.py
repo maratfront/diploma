@@ -23,7 +23,11 @@ class CryptoProcessView(APIView):
         serializer = CryptoRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        engine = CryptoEngine(algorithm=data['algorithm'], key=data.get('key'))
+        engine = CryptoEngine(
+            algorithm=data['algorithm'], 
+            key=data.get('key'),
+            is_binary=data.get('is_binary', False)
+        )
 
         try:
             if data['operation'] == 'encrypt':
@@ -38,6 +42,7 @@ class CryptoProcessView(APIView):
                 "operation": data['operation'],
                 "algorithm": data['algorithm'],
                 "result": result,
+                "is_binary": data.get('is_binary', False)
             },
             status=status.HTTP_200_OK,
         )

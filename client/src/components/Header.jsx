@@ -13,14 +13,6 @@ function Header({ user, theme, onToggleTheme, onLogout, onMenuToggle }) {
             >
               <div className="icon-menu text-xl text-[var(--text-primary)]"></div>
             </button>
-
-            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg">
-              <div className="icon-shield text-lg sm:text-xl text-white"></div>
-            </div>
-            <div>
-              <h1 className="text-lg sm:text-xl font-bold gradient-text">CryptoSecure</h1>
-              <p className="text-xs text-[var(--text-secondary)] hidden sm:block">Система активна</p>
-            </div>
           </div>
 
           <div className="flex items-center space-x-3 sm:space-x-6">

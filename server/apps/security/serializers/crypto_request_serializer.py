@@ -20,12 +20,23 @@ class CryptoRequestSerializer(serializers.Serializer):
     algorithm = serializers.ChoiceField(choices=ALGORITHM_CHOICES)
     payload = serializers.CharField()
     key = serializers.CharField(required=False, allow_blank=True)
+    is_binary = serializers.BooleanField(default=False, required=False)
 
     def validate(self, attrs):
         algorithm = attrs["algorithm"]
         key = attrs.get("key", "")
+        is_binary = attrs.get("is_binary", False)
+        
+        # Для бинарных файлов Caesar не поддерживается
+        if algorithm == "caesar" and is_binary:
+            raise serializers.ValidationError(
+                "Шифр Цезаря не поддерживается для бинарных файлов"
+            )
+        
         if algorithm not in {"base64"} and algorithm != "caesar" and not key:
             raise serializers.ValidationError("Необходим ключ для выбранного алгоритма")
+        
         if algorithm == "caesar" and not key:
             attrs["key"] = "3"
+            
         return attrs

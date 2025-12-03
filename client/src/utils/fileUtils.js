@@ -1,3 +1,4 @@
+// Для текстовых файлов
 export function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -14,24 +15,42 @@ export function readFileAsText(file) {
   });
 }
 
-export function readFileAsArrayBuffer(file) {
+// Для бинарных файлов (Word, PDF, изображения)
+export function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = (event) => {
-      resolve(event.target.result);
+      // Конвертируем ArrayBuffer в base64 строку
+      const base64 = event.target.result.split(',')[1];
+      resolve(base64);
     };
 
     reader.onerror = (error) => {
       reject(new Error('Ошибка чтения файла: ' + error.message));
     };
 
-    reader.readAsArrayBuffer(file);
+    reader.readAsDataURL(file);
   });
 }
 
 export function downloadFile(content, filename, mimeType = 'text/plain') {
-  const blob = new Blob([content], { type: mimeType });
+  let blob;
+
+  // Если контент в формате base64 (с префиксом data:)
+  if (content.startsWith('data:')) {
+    const byteCharacters = atob(content.split(',')[1]);
+    const byteNumbers = new Array(byteCharacters.length);
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    const byteArray = new Uint8Array(byteNumbers);
+    blob = new Blob([byteArray], { type: mimeType });
+  } else {
+    // Если обычный текст
+    blob = new Blob([content], { type: mimeType });
+  }
+
   const url = URL.createObjectURL(blob);
 
   const link = document.createElement('a');
@@ -42,6 +61,16 @@ export function downloadFile(content, filename, mimeType = 'text/plain') {
   document.body.removeChild(link);
 
   URL.revokeObjectURL(url);
+}
+
+// Утилита для сохранения base64 как файла
+export function downloadBase64File(base64String, filename, mimeType) {
+  const link = document.createElement('a');
+  link.href = `data:${mimeType};base64,${base64String}`;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function validateFileSize(file, maxSizeMB = 10) {
@@ -57,4 +86,32 @@ export function isTextFile(file) {
   const textExtensions = ['txt', 'json', 'xml', 'csv', 'js', 'html', 'css', 'md'];
   const extension = getFileExtension(file.name);
   return textExtensions.includes(extension) || file.type.startsWith('text/');
+}
+
+// Проверка бинарных файлов
+export function isBinaryFile(file) {
+  const binaryExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif'];
+  const extension = getFileExtension(file.name);
+  return binaryExtensions.includes(extension) ||
+    file.type.startsWith('application/') ||
+    file.type.startsWith('image/');
+}
+
+// Определение MIME типа по расширению
+export function getMimeType(filename) {
+  const extension = getFileExtension(filename);
+  const mimeTypes = {
+    'txt': 'text/plain',
+    'pdf': 'application/pdf',
+    'doc': 'application/msword',
+    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'xls': 'application/vnd.ms-excel',
+    'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif'
+  };
+
+  return mimeTypes[extension] || 'application/octet-stream';
 }

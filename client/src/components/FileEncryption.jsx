@@ -1,5 +1,5 @@
 import React from 'react'
-import { readFileAsText } from '../utils/fileUtils.js'
+import { readFileAsText, readFileAsBase64, isTextFile, isBinaryFile, getMimeType } from '../utils/fileUtils.js'
 import { encryptFile, decryptFile } from '../utils/cryptoUtils.js'
 import { addToHistory } from '../utils/storage.js'
 import { NotificationManager } from './Notification.jsx'
@@ -34,29 +34,64 @@ function FileEncryption() {
       setIsProcessing(true);
 
       try {
-        const fileContent = await readFileAsText(selectedFile);
+        let fileContent;
+        let isBinary = false;
+        let mimeType = getMimeType(selectedFile.name);
+
+        // Определяем тип файла и читаем соответствующим образом
+        if (isTextFile(selectedFile)) {
+          // Текстовые файлы читаем как текст
+          fileContent = await readFileAsText(selectedFile);
+          isBinary = false;
+        } else if (isBinaryFile(selectedFile)) {
+          // Бинарные файлы читаем как base64
+          fileContent = await readFileAsBase64(selectedFile);
+          isBinary = true;
+        } else {
+          // Для неизвестных типов используем base64
+          fileContent = await readFileAsBase64(selectedFile);
+          isBinary = true;
+        }
+
         let processedContent;
 
         if (operation === 'encrypt') {
-          processedContent = await encryptFile(fileContent, algorithm, key);
+          processedContent = await encryptFile(fileContent, algorithm, key, isBinary);
         } else {
-          processedContent = await decryptFile(fileContent, algorithm, key);
+          processedContent = await decryptFile(fileContent, algorithm, key, isBinary);
         }
 
-        const blob = new Blob([processedContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        // Подготавливаем результат для скачивания
+        let downloadUrl;
+
+        if (isBinary) {
+          // Для бинарных файлов создаем data URL
+          const resultMimeType = operation === 'encrypt'
+            ? 'application/octet-stream'
+            : mimeType;
+
+          downloadUrl = `data:${resultMimeType};base64,${processedContent}`;
+        } else {
+          // Для текстовых файлов создаем Blob
+          const blob = new Blob([processedContent], {
+            type: operation === 'encrypt' ? 'application/octet-stream' : mimeType
+          });
+          downloadUrl = URL.createObjectURL(blob);
+        }
 
         setResult({
           content: processedContent,
-          downloadUrl: url,
-          filename: `${operation}_${selectedFile.name}`
+          downloadUrl: downloadUrl,
+          filename: `${operation === 'encrypt' ? 'encrypted' : 'decrypted'}_${selectedFile.name}`,
+          isBinary: isBinary,
+          mimeType: operation === 'encrypt' ? 'application/octet-stream' : mimeType
         });
 
         await addToHistory({
           type: operation,
           algorithm: algorithm.toUpperCase(),
-          input: `Файл: ${selectedFile.name}`,
-          output: `Обработан файл размером ${blob.size} байт`,
+          input: `Файл: ${selectedFile.name} (${isBinary ? 'бинарный' : 'текстовый'})`,
+          output: `Обработан файл размером ${selectedFile.size} байт`,
           timestamp: Date.now()
         });
 
@@ -91,8 +126,8 @@ function FileEncryption() {
                       key={op}
                       onClick={() => setOperation(op)}
                       className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-medium text-sm sm:text-base transition-all ${operation === op
-                          ? 'bg-[var(--primary-color)] text-white shadow-lg'
-                          : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
+                        ? 'bg-[var(--primary-color)] text-white shadow-lg'
+                        : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
                         }`}
                     >
                       {op === 'encrypt' ? 'Шифрование' : 'Расшифровка'}
@@ -131,6 +166,11 @@ function FileEncryption() {
                     min={algorithm === 'caesar' ? '1' : undefined}
                     max={algorithm === 'caesar' ? '25' : undefined}
                   />
+                  <p className="text-xs text-[var(--text-secondary)] mt-2">
+                    {algorithm === 'caesar'
+                      ? 'Для шифрования Цезаря требуется числовой ключ'
+                      : 'Для бинарных файлов (Word, PDF) используйте одинаковый ключ при шифровании и расшифровке'}
+                  </p>
                 </div>
               )}
             </div>
@@ -142,8 +182,8 @@ function FileEncryption() {
 
               <div
                 className={`border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-12 text-center transition-all duration-300 transform hover:scale-105 ${isDragOver
-                    ? 'border-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-5 scale-105'
-                    : 'border-[var(--border-color)] hover:border-[var(--primary-color)]'
+                  ? 'border-[var(--primary-color)] bg-[var(--primary-color)] bg-opacity-5 scale-105'
+                  : 'border-[var(--border-color)] hover:border-[var(--primary-color)]'
                   }`}
                 onDrop={handleDrop}
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
@@ -157,10 +197,24 @@ function FileEncryption() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-4 bg-[var(--bg-tertiary)] rounded-xl">
                       <div className="flex items-center space-x-3">
-                        <div className="icon-file-text text-xl text-[var(--primary-color)]"></div>
+                        <div className={`text-xl ${selectedFile.name.endsWith('.pdf') ? 'text-red-500' :
+                          selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? 'text-blue-500' :
+                            'text-[var(--primary-color)]'
+                          }`}>
+                          {selectedFile.name.endsWith('.pdf') ? '📄' :
+                            selectedFile.name.endsWith('.doc') || selectedFile.name.endsWith('.docx') ? '📝' :
+                              selectedFile.name.endsWith('.xls') || selectedFile.name.endsWith('.xlsx') ? '📊' :
+                                selectedFile.name.endsWith('.jpg') || selectedFile.name.endsWith('.png') ? '🖼️' :
+                                  '📃'}
+                        </div>
                         <div>
-                          <p className="font-semibold text-[var(--text-primary)]">{selectedFile.name}</p>
-                          <p className="text-sm text-[var(--text-secondary)]">{(selectedFile.size / 1024).toFixed(2)} KB</p>
+                          <p className="font-semibold text-[var(--text-primary)] truncate max-w-[200px]">
+                            {selectedFile.name}
+                          </p>
+                          <p className="text-sm text-[var(--text-secondary)]">
+                            {(selectedFile.size / 1024).toFixed(2)} KB •
+                            {isTextFile(selectedFile) ? ' Текстовый' : ' Бинарный'}
+                          </p>
                         </div>
                       </div>
                       <button
@@ -173,10 +227,13 @@ function FileEncryption() {
                     </div>
                     <button
                       onClick={handleFileProcess}
-                      disabled={isProcessing}
-                      className="btn-primary w-full"
+                      disabled={isProcessing || (algorithm === 'caesar' && !isTextFile(selectedFile))}
+                      className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isProcessing ? 'Обработка...' : `${operation === 'encrypt' ? 'Зашифровать' : 'Расшифровать'} файл`}
+                      {isProcessing ? 'Обработка...' :
+                        algorithm === 'caesar' && !isTextFile(selectedFile) ?
+                          'Шифр Цезаря только для текстовых файлов' :
+                          `${operation === 'encrypt' ? 'Зашифровать' : 'Расшифровать'} файл`}
                     </button>
                   </div>
                 ) : (
@@ -184,13 +241,15 @@ function FileEncryption() {
                     <p className="text-lg font-semibold text-[var(--text-primary)] mb-2">
                       Перетащите файл сюда или выберите
                     </p>
-                    <p className="text-[var(--text-secondary)] mb-6">Поддерживаются текстовые файлы до 10 МБ</p>
+                    <p className="text-[var(--text-secondary)] mb-6">
+                      Поддерживаются текстовые файлы (txt, json, xml, csv), документы (PDF, Word, Excel) и изображения до 10 МБ
+                    </p>
                     <input
                       type="file"
                       onChange={(e) => e.target.files[0] && handleFileSelect(e.target.files[0])}
                       className="hidden"
                       id="fileInput"
-                      accept=".txt,.json,.xml,.csv"
+                      accept=".txt,.json,.xml,.csv,.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
                     />
                     <label htmlFor="fileInput" className="btn-primary cursor-pointer inline-flex items-center">
                       <div className="icon-folder-open text-lg mr-2"></div>
@@ -212,7 +271,9 @@ function FileEncryption() {
                       <div className="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                         <div className="icon-file-check text-3xl text-green-600"></div>
                       </div>
-                      <p className="font-semibold text-[var(--text-primary)] mb-4">Файл успешно обработан</p>
+                      <p className="font-semibold text-[var(--text-primary)] mb-4">
+                        Файл успешно {operation === 'encrypt' ? 'зашифрован' : 'расшифрован'}
+                      </p>
                       <a
                         href={result.downloadUrl}
                         download={result.filename}
@@ -221,11 +282,34 @@ function FileEncryption() {
                         <div className="icon-download text-lg mr-2"></div>
                         Скачать результат
                       </a>
+                      <p className="text-xs text-[var(--text-secondary)] mt-4">
+                        {result.isBinary
+                          ? 'Файл обработан в бинарном формате'
+                          : 'Файл обработан в текстовом формате'}
+                      </p>
                     </div>
                   )}
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="card p-6">
+          <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Поддерживаемые форматы</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { icon: '📄', name: 'PDF', extensions: '.pdf' },
+              { icon: '📝', name: 'Word', extensions: '.doc, .docx' },
+              { icon: '📊', name: 'Excel', extensions: '.xls, .xlsx' },
+              { icon: '📃', name: 'Текстовые', extensions: '.txt, .json, .xml, .csv' }
+            ].map((format, index) => (
+              <div key={index} className="bg-[var(--bg-secondary)] p-4 rounded-xl text-center">
+                <div className="text-2xl mb-2">{format.icon}</div>
+                <p className="font-semibold text-[var(--text-primary)]">{format.name}</p>
+                <p className="text-xs text-[var(--text-secondary)]">{format.extensions}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

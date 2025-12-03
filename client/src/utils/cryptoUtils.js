@@ -1,4 +1,4 @@
-async function requestCrypto(operation, payload, algorithm, key) {
+async function requestCrypto(operation, payload, algorithm, key, isBinary = false) {
   const response = await fetch('http://127.0.0.1:8000/api/security/crypto/', {
     method: 'POST',
     headers: {
@@ -9,7 +9,8 @@ async function requestCrypto(operation, payload, algorithm, key) {
       operation,
       payload,
       algorithm,
-      key: key || ''
+      key: key || '',
+      is_binary: isBinary // Флаг для сервера, что это бинарные данные
     })
   })
 
@@ -21,18 +22,20 @@ async function requestCrypto(operation, payload, algorithm, key) {
   return data.result
 }
 
+// Для текста
 export async function encryptText(text, algorithm, key) {
-  return requestCrypto('encrypt', text, algorithm, key)
+  return requestCrypto('encrypt', text, algorithm, key, false)
 }
 
 export async function decryptText(text, algorithm, key) {
-  return requestCrypto('decrypt', text, algorithm, key)
+  return requestCrypto('decrypt', text, algorithm, key, false)
 }
 
-export async function encryptFile(text, algorithm, key) {
-  return requestCrypto('encrypt', text, algorithm, key)
+// Для файлов
+export async function encryptFile(fileContent, algorithm, key, isBinary = false) {
+  return requestCrypto('encrypt', fileContent, algorithm, key, isBinary)
 }
 
-export async function decryptFile(text, algorithm, key) {
-  return requestCrypto('decrypt', text, algorithm, key)
+export async function decryptFile(fileContent, algorithm, key, isBinary = false) {
+  return requestCrypto('decrypt', fileContent, algorithm, key, isBinary)
 }
