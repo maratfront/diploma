@@ -1,53 +1,51 @@
 from __future__ import annotations
 import base64
 import os
+import hashlib
 import json
 from dataclasses import dataclass
-from hashlib import sha256
-from typing import Callable, Optional, Tuple
+from typing import Callable
 from Crypto.Cipher import AES, Blowfish, ChaCha20
-from Crypto.Hash import SHA256, SHA3_256
+from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA, ECC
 from Crypto.Signature import pss, DSS
 from Crypto.Util.Padding import pad, unpad
-from Crypto.Random import get_random_bytes
-from Crypto.Protocol.KDF import scrypt, HKDF
-import argon2
 
-
+# Классы исключений
 class CryptoServiceError(Exception):
     """Raised when we cannot complete the requested crypto operation."""
-
 
 class RSASignatureError(CryptoServiceError):
     """Raised when RSA key generation, signing or verification fails."""
 
-
-class ECCError(CryptoServiceError):
+class ECCSignatureError(CryptoServiceError):
     """Raised when ECC operations fail."""
 
+class HashingError(CryptoServiceError):
+    """Raised when hashing operations fail."""
 
-class Argon2Error(CryptoServiceError):
-    """Raised when Argon2 operations fail."""
+# Проверка доступности argon2
+try:
+    import argon2
+    ARGON2_AVAILABLE = True
+except ImportError:
+    ARGON2_AVAILABLE = False
+    print("Warning: argon2-cffi not installed. Argon2 hashing will not be available.")
 
 
 def _derive_bytes(source: str, length: int) -> bytes:
     if not source:
         raise CryptoServiceError("A non-empty key is required for this algorithm")
-
     material = source.encode("utf-8")
     digest = b""
-
     while len(digest) < length:
-        material = sha256(material).digest()
+        material = hashlib.sha256(material).digest()
         digest += material
-
     return digest[:length]
 
 
 def _b64_encode(data: bytes) -> str:
     return base64.b64encode(data).decode("utf-8")
-
 
 def _b64_decode(data: str) -> bytes:
     try:
@@ -55,25 +53,28 @@ def _b64_decode(data: str) -> bytes:
     except Exception as exc:
         raise CryptoServiceError("Невозможно декодировать Base64 данные") from exc
 
-
 def _generate_secure_random_bytes(length: int) -> bytes:
     """Generate cryptographically secure random bytes."""
     return os.urandom(length)
 
 
 # ---------------------------------------------------------------------------
-# RSA Helpers (Encryption/Decryption and Signatures)
+# RSA helpers (digital signatures)
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class RSAKeyPair:
-    """Container for RSA keys encoded as Base64 strings."""
+    """
+    Simple container for RSA keys encoded as Base64 strings.
+    """
     public_key_b64: str
     private_key_b64: str
 
 
 def generate_rsa_keypair(bits: int = 2048) -> RSAKeyPair:
-    """Generate an RSA key pair for encryption and signatures."""
+    """
+    Generate an RSA key pair suitable for RSA-PSS signatures.
+    """
     try:
         key = RSA.generate(bits)
     except Exception as exc:
@@ -88,49 +89,37 @@ def generate_rsa_keypair(bits: int = 2048) -> RSAKeyPair:
     )
 
 
-def rsa_encrypt(payload: str, public_key_b64: str) -> str:
-    """Encrypt data using RSA-OAEP."""
-    try:
-        public_der = _b64_decode(public_key_b64)
-        public_key = RSA.import_key(public_der)
-        cipher = PKCS1_OAEP.new(public_key)
-        ciphertext = cipher.encrypt(payload.encode("utf-8"))
-        return _b64_encode(ciphertext)
-    except Exception as exc:
-        raise CryptoServiceError(f"RSA encryption failed: {exc}") from exc
-
-
-def rsa_decrypt(payload: str, private_key_b64: str) -> str:
-    """Decrypt data using RSA-OAEP."""
-    try:
-        private_der = _b64_decode(private_key_b64)
-        private_key = RSA.import_key(private_der)
-        cipher = PKCS1_OAEP.new(private_key)
-        ciphertext = _b64_decode(payload)
-        plaintext = cipher.decrypt(ciphertext)
-        return plaintext.decode("utf-8")
-    except Exception as exc:
-        raise CryptoServiceError(f"RSA decryption failed: {exc}") from exc
-
-
 def sign_message_rsa_pss(message: str, private_key_b64: str) -> str:
-    """Create RSA-PSS signature over the provided message."""
+    """
+    Create RSA-PSS signature over the provided message.
+    """
     try:
         private_der = _b64_decode(private_key_b64)
         private_key = RSA.import_key(private_der)
+    except Exception as exc:
+        raise RSASignatureError("Некорректный приватный ключ RSA") from exc
+
+    try:
         digest = SHA256.new(message.encode("utf-8"))
         signer = pss.new(private_key)
         signature = signer.sign(digest)
-        return _b64_encode(signature)
     except Exception as exc:
         raise RSASignatureError("Не удалось создать цифровую подпись") from exc
 
+    return _b64_encode(signature)
+
 
 def verify_message_rsa_pss(message: str, signature_b64: str, public_key_b64: str) -> bool:
-    """Verify RSA-PSS signature for the given message."""
+    """
+    Verify RSA-PSS signature for the given message.
+    """
     try:
         public_der = _b64_decode(public_key_b64)
         public_key = RSA.import_key(public_der)
+    except Exception as exc:
+        raise RSASignatureError("Некорректный открытый ключ RSA") from exc
+
+    try:
         signature = _b64_decode(signature_b64)
         digest = SHA256.new(message.encode("utf-8"))
         verifier = pss.new(public_key)
@@ -143,333 +132,221 @@ def verify_message_rsa_pss(message: str, signature_b64: str, public_key_b64: str
 
 
 # ---------------------------------------------------------------------------
-# SHA-256 Helpers
+# Hashing functions
 # ---------------------------------------------------------------------------
 
-def sha256_hash(payload: str) -> str:
-    """Compute SHA-256 hash of the payload."""
+def hash_sha256(data: str) -> str:
+    """Compute SHA-256 hash of the input data."""
     try:
-        if not payload:
-            raise CryptoServiceError("Payload cannot be empty for hashing")
-        return sha256(payload.encode("utf-8")).hexdigest()
-    except Exception as exc:
-        raise CryptoServiceError(f"SHA-256 hashing failed: {exc}") from exc
-
-
-def sha256_hash_binary(payload: str) -> str:
-    """Compute SHA-256 hash of binary data (base64 encoded)."""
-    try:
-        data = _b64_decode(payload)
-        return sha256(data).hexdigest()
-    except Exception as exc:
-        raise CryptoServiceError(f"SHA-256 hashing failed: {exc}") from exc
-
-
-def sha3_256_hash(payload: str) -> str:
-    """Compute SHA3-256 hash of the payload."""
-    try:
-        if not payload:
-            raise CryptoServiceError("Payload cannot be empty for hashing")
-        return SHA3_256.new(payload.encode("utf-8")).hexdigest()
-    except Exception as exc:
-        raise CryptoServiceError(f"SHA3-256 hashing failed: {exc}") from exc
-
-
-# ---------------------------------------------------------------------------
-# Argon2 Helpers
-# ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class Argon2Params:
-    """Argon2 parameters."""
-    time_cost: int = 3
-    memory_cost: int = 65536  # 64 MB
-    parallelism: int = 4
-    hash_len: int = 32
-    salt_len: int = 16
-
-
-def argon2_hash(password: str, params: Optional[Argon2Params] = None) -> str:
-    """Generate Argon2 hash of a password."""
-    try:
-        if not password:
-            raise CryptoServiceError("Password cannot be empty for Argon2")
+        if isinstance(data, str):
+            data_bytes = data.encode('utf-8')
+        else:
+            data_bytes = data
         
-        if params is None:
-            params = Argon2Params()
-        
-        # Generate random salt
-        salt = _generate_secure_random_bytes(params.salt_len)
-        
-        # Create Argon2 hash
+        return hashlib.sha256(data_bytes).hexdigest()
+    except Exception as exc:
+        raise HashingError(f"Ошибка при вычислении SHA-256: {str(exc)}")
+
+def hash_argon2(data: str, time_cost: int = 2, memory_cost: int = 512, 
+               parallelism: int = 2, hash_len: int = 32) -> dict:
+    """
+    Compute Argon2 hash of the input data.
+    Returns a simplified dictionary with only hash.
+    """
+    if not ARGON2_AVAILABLE:
+        raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
+    
+    try:
         hasher = argon2.PasswordHasher(
-            time_cost=params.time_cost,
-            memory_cost=params.memory_cost,
-            parallelism=params.parallelism,
-            hash_len=params.hash_len,
-            salt_len=params.salt_len
+            time_cost=time_cost,
+            memory_cost=memory_cost,
+            parallelism=parallelism,
+            hash_len=hash_len,
+            type=argon2.Type.ID
         )
         
-        # Argon2id is recommended (default in argon2 library)
-        argon2_hash_str = hasher.hash(password, salt=salt)
+        hash_result = hasher.hash(data)
         
-        # Return as JSON with parameters for verification
-        result = {
-            "hash": argon2_hash_str,
-            "algorithm": "argon2id",
-            "params": {
-                "time_cost": params.time_cost,
-                "memory_cost": params.memory_cost,
-                "parallelism": params.parallelism,
-                "hash_len": params.hash_len,
-                "salt_len": params.salt_len
-            }
+        # Возвращаем ТОЛЬКО хэш, без лишних деталей
+        return {
+            "hash": hash_result  # ✅ Только хэш, без salt и params
         }
-        return json.dumps(result)
     except Exception as exc:
-        raise Argon2Error(f"Argon2 hashing failed: {exc}") from exc
+        raise HashingError(f"Ошибка при вычислении Argon2: {str(exc)}")
 
-
-def argon2_verify(password: str, argon2_hash_str: str) -> bool:
-    """Verify password against Argon2 hash."""
+def verify_argon2(data: str, hash_value: str) -> bool:
+    """Verify data against Argon2 hash."""
+    if not ARGON2_AVAILABLE:
+        raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
+    
     try:
         hasher = argon2.PasswordHasher()
-        return hasher.verify(argon2_hash_str, password)
-    except (argon2.exceptions.VerifyMismatchError, argon2.exceptions.VerificationError):
+        return hasher.verify(hash_value, data)
+    except argon2.exceptions.VerifyMismatchError:
         return False
     except Exception as exc:
-        raise Argon2Error(f"Argon2 verification failed: {exc}") from exc
-
-
-def argon2_derive_key(password: str, salt: Optional[bytes] = None, key_len: int = 32) -> str:
-    """Derive key from password using Argon2."""
-    try:
-        if not password:
-            raise CryptoServiceError("Password cannot be empty for key derivation")
-        
-        if salt is None:
-            salt = _generate_secure_random_bytes(16)
-        elif isinstance(salt, str):
-            salt = _b64_decode(salt)
-        
-        # Use Argon2 for key derivation
-        key = argon2.low_level.hash_secret_raw(
-            secret=password.encode("utf-8"),
-            salt=salt,
-            time_cost=3,
-            memory_cost=65536,
-            parallelism=4,
-            hash_len=key_len,
-            type=argon2.low_level.Type.ID
-        )
-        
-        return _b64_encode(key)
-    except Exception as exc:
-        raise Argon2Error(f"Argon2 key derivation failed: {exc}") from exc
-
+        raise HashingError(f"Ошибка при проверке Argon2: {str(exc)}")
 
 # ---------------------------------------------------------------------------
-# ECC Helpers (ECDH and ECDSA)
+# ECC helpers (digital signatures)
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class ECCKeyPair:
-    """Container for ECC keys encoded as Base64 strings."""
+    """
+    Simple container for ECC keys encoded as Base64 strings.
+    """
     public_key_b64: str
     private_key_b64: str
     curve: str
 
-
 def generate_ecc_keypair(curve: str = "P-256") -> ECCKeyPair:
-    """Generate an ECC key pair for ECDH or ECDSA."""
+    """
+    Generate an ECC key pair suitable for ECDSA signatures.
+    """
     try:
-        if curve not in ["P-256", "P-384", "P-521"]:
-            raise ValueError(f"Unsupported curve: {curve}")
-        
         key = ECC.generate(curve=curve)
-        
-        # Export keys
-        private_der = key.export_key(format="DER")
-        public_der = key.public_key().export_key(format="DER")
-        
-        return ECCKeyPair(
-            public_key_b64=_b64_encode(public_der),
-            private_key_b64=_b64_encode(private_der),
-            curve=curve
-        )
     except Exception as exc:
-        raise ECCError(f"Failed to generate ECC key pair: {exc}") from exc
+        raise ECCSignatureError(f"Не удалось сгенерировать ECC ключи для кривой {curve}") from exc
 
+    private_pem = key.export_key(format="PEM")
+    public_pem = key.public_key().export_key(format="PEM")
 
-def ecdh_derive_shared_secret(private_key_b64: str, public_key_b64: str) -> str:
-    """Derive shared secret using ECDH."""
+    return ECCKeyPair(
+        public_key_b64=_b64_encode(public_pem.encode('utf-8')),
+        private_key_b64=_b64_encode(private_pem.encode('utf-8')),
+        curve=curve
+    )
+
+def sign_message_ecc(message: str, private_key_b64: str, hash_algorithm: str = "SHA256") -> str:
+    """
+    Create ECDSA signature over the provided message.
+    """
     try:
-        # Import keys
-        private_der = _b64_decode(private_key_b64)
-        public_der = _b64_decode(public_key_b64)
-        
-        private_key = ECC.import_key(private_der)
-        public_key = ECC.import_key(public_der)
-        
-        # Perform ECDH
-        shared_secret = private_key.d * public_key.pointQ
-        
-        # Convert to bytes (using x coordinate)
-        shared_secret_bytes = int(shared_secret.x).to_bytes(
-            (int(shared_secret.x).bit_length() + 7) // 8, 'big'
-        )
-        
-        # Use HKDF to derive a symmetric key
-        derived_key = HKDF(
-            master=shared_secret_bytes,
-            key_len=32,
-            salt=None,
-            hashmod=SHA256,
-            num_keys=1
-        )
-        
-        return _b64_encode(derived_key)
+        private_pem = _b64_decode(private_key_b64).decode('utf-8')
+        private_key = ECC.import_key(private_pem)
     except Exception as exc:
-        raise ECCError(f"ECDH failed: {exc}") from exc
+        raise ECCSignatureError("Некорректный приватный ключ ECC") from exc
 
-
-def ecdsa_sign(message: str, private_key_b64: str, hash_algorithm: str = "SHA256") -> str:
-    """Sign message using ECDSA."""
     try:
-        # Import private key
-        private_der = _b64_decode(private_key_b64)
-        private_key = ECC.import_key(private_der)
-        
-        # Hash the message
+        # Выбор хэш-алгоритма
         if hash_algorithm == "SHA256":
-            digest = SHA256.new(message.encode("utf-8"))
-        elif hash_algorithm == "SHA3_256":
-            digest = SHA3_256.new(message.encode("utf-8"))
+            hash_obj = SHA256.new(message.encode("utf-8"))
+        elif hash_algorithm == "SHA512":
+            hash_obj = hashlib.sha512(message.encode("utf-8"))
         else:
-            raise ValueError(f"Unsupported hash algorithm: {hash_algorithm}")
+            raise ValueError(f"Неподдерживаемый хэш-алгоритм: {hash_algorithm}")
         
-        # Sign with ECDSA
         signer = DSS.new(private_key, 'fips-186-3')
-        signature = signer.sign(digest)
-        
+        signature = signer.sign(hash_obj)
         return _b64_encode(signature)
     except Exception as exc:
-        raise ECCError(f"ECDSA signing failed: {exc}") from exc
+        raise ECCSignatureError("Не удалось создать цифровую подпись ECC") from exc
 
-
-def ecdsa_verify(message: str, signature_b64: str, public_key_b64: str, 
-                hash_algorithm: str = "SHA256") -> bool:
-    """Verify ECDSA signature."""
+def verify_message_ecc(message: str, signature_b64: str, public_key_b64: str, 
+                      hash_algorithm: str = "SHA256") -> bool:
+    """
+    Verify ECDSA signature for the given message.
+    """
     try:
-        # Import public key
-        public_der = _b64_decode(public_key_b64)
-        public_key = ECC.import_key(public_der)
-        
-        # Hash the message
-        if hash_algorithm == "SHA256":
-            digest = SHA256.new(message.encode("utf-8"))
-        elif hash_algorithm == "SHA3_256":
-            digest = SHA3_256.new(message.encode("utf-8"))
-        else:
-            raise ValueError(f"Unsupported hash algorithm: {hash_algorithm}")
-        
-        # Verify signature
+        public_pem = _b64_decode(public_key_b64).decode('utf-8')
+        public_key = ECC.import_key(public_pem)
+    except Exception as exc:
+        raise ECCSignatureError("Некорректный открытый ключ ECC") from exc
+
+    try:
         signature = _b64_decode(signature_b64)
-        verifier = DSS.new(public_key, 'fips-186-3')
         
-        try:
-            verifier.verify(digest, signature)
-            return True
-        except (ValueError, TypeError):
-            return False
-    except Exception as exc:
-        raise ECCError(f"ECDSA verification failed: {exc}") from exc
-
-
-def ecc_encrypt_hybrid(payload: str, public_key_b64: str, 
-                      symmetric_algorithm: str = "aes-gcm") -> str:
-    """
-    Hybrid encryption using ECDH for key exchange and symmetric encryption.
-    Returns JSON with ephemeral public key and encrypted data.
-    """
-    try:
-        # Generate ephemeral key pair
-        ephemeral_keypair = generate_ecc_keypair("P-256")
-        
-        # Derive shared secret
-        shared_secret = ecdh_derive_shared_secret(
-            ephemeral_keypair.private_key_b64,
-            public_key_b64
-        )
-        
-        # Use shared secret as key for symmetric encryption
-        if symmetric_algorithm == "aes-gcm":
-            key_bytes = _b64_decode(shared_secret)
-            nonce = _generate_secure_random_bytes(12)
-            cipher = AES.new(key_bytes, AES.MODE_GCM, nonce=nonce)
-            ciphertext, tag = cipher.encrypt_and_digest(payload.encode("utf-8"))
-            
-            result = {
-                "ephemeral_public_key": ephemeral_keypair.public_key_b64,
-                "nonce": _b64_encode(nonce),
-                "tag": _b64_encode(tag),
-                "ciphertext": _b64_encode(ciphertext),
-                "symmetric_algorithm": symmetric_algorithm
-            }
+        if hash_algorithm == "SHA256":
+            hash_obj = SHA256.new(message.encode("utf-8"))
+        elif hash_algorithm == "SHA512":
+            hash_obj = hashlib.sha512(message.encode("utf-8"))
         else:
-            raise ValueError(f"Unsupported symmetric algorithm: {symmetric_algorithm}")
+            raise ValueError(f"Неподдерживаемый хэш-алгоритм: {hash_algorithm}")
         
-        return json.dumps(result)
+        verifier = DSS.new(public_key, 'fips-186-3')
+        verifier.verify(hash_obj, signature)
+        return True
+    except (ValueError, TypeError):
+        return False
     except Exception as exc:
-        raise ECCError(f"ECC hybrid encryption failed: {exc}") from exc
+        raise ECCSignatureError("Ошибка при проверке подписи ECC") from exc
 
-
-def ecc_decrypt_hybrid(encrypted_data: str, private_key_b64: str) -> str:
+def encrypt_ecc(message: str, public_key_b64: str) -> str:
     """
-    Hybrid decryption using ECDH for key exchange.
+    Encrypt message using ECC public key (ECDH + AES).
+    Returns a simple JSON object, not a string.
     """
     try:
-        data = json.loads(encrypted_data)
+        ephemeral_key = ECC.generate(curve='P-256')
         
-        # Extract components
-        ephemeral_public_key = data["ephemeral_public_key"]
+        public_pem = _b64_decode(public_key_b64).decode('utf-8')
+        recipient_key = ECC.import_key(public_pem)
+        
+        shared_secret = ephemeral_key.d * recipient_key.pointQ
+        
+        shared_key = hashlib.sha256(str(shared_secret.x).encode()).digest()[:32]
+        
+        nonce = os.urandom(12)
+        cipher = AES.new(shared_key, AES.MODE_GCM, nonce=nonce)
+        ciphertext, tag = cipher.encrypt_and_digest(message.encode('utf-8'))
+        
+        ephemeral_pubkey = ephemeral_key.public_key().export_key(format="PEM")
+        
+        return {
+            "ephemeral_pubkey": _b64_encode(ephemeral_pubkey.encode('utf-8')),
+            "nonce": _b64_encode(nonce),
+            "tag": _b64_encode(tag),
+            "ciphertext": _b64_encode(ciphertext)
+        }
+    except Exception as exc:
+        raise CryptoServiceError(f"Ошибка при шифровании ECC: {str(exc)}") from exc
+
+def decrypt_ecc(encrypted_data: dict, private_key_b64: str) -> str:
+    """
+    Decrypt message using ECC private key.
+    Accepts a dict (parsed from JSON).
+    """
+    try:
+        if isinstance(encrypted_data, str):
+            data = json.loads(encrypted_data)
+        else:
+            data = encrypted_data
+        
+        private_pem = _b64_decode(private_key_b64).decode('utf-8')
+        private_key = ECC.import_key(private_pem)
+        
+        ephemeral_pubkey_pem = _b64_decode(data["ephemeral_pubkey"]).decode('utf-8')
+        ephemeral_pubkey = ECC.import_key(ephemeral_pubkey_pem)
+        
+        shared_secret = private_key.d * ephemeral_pubkey.pointQ
+        
+        shared_key = hashlib.sha256(str(shared_secret.x).encode()).digest()[:32]
+        
         nonce = _b64_decode(data["nonce"])
         tag = _b64_decode(data["tag"])
         ciphertext = _b64_decode(data["ciphertext"])
-        symmetric_algorithm = data.get("symmetric_algorithm", "aes-gcm")
         
-        # Derive shared secret
-        shared_secret = ecdh_derive_shared_secret(
-            private_key_b64,
-            ephemeral_public_key
-        )
+        cipher = AES.new(shared_key, AES.MODE_GCM, nonce=nonce)
+        plaintext = cipher.decrypt_and_verify(ciphertext, tag)
         
-        # Decrypt with symmetric algorithm
-        if symmetric_algorithm == "aes-gcm":
-            key_bytes = _b64_decode(shared_secret)
-            cipher = AES.new(key_bytes, AES.MODE_GCM, nonce=nonce)
-            plaintext = cipher.decrypt_and_verify(ciphertext, tag)
-            return plaintext.decode("utf-8")
-        else:
-            raise ValueError(f"Unsupported symmetric algorithm: {symmetric_algorithm}")
+        return plaintext.decode('utf-8')
     except Exception as exc:
-        raise ECCError(f"ECC hybrid decryption failed: {exc}") from exc
+        raise CryptoServiceError(f"Ошибка при расшифровании ECC: {str(exc)}") from exc
 
 @dataclass(frozen=True)
 class CryptoEngine:
     """
-    High-level helper that exposes crypto operations.
+    High-level helper that exposes encrypt/decrypt entry points.
     """
     algorithm: str
     key: str | None
     is_binary: bool = False
-    # Additional parameters for new algorithms
-    hash_algorithm: str = "SHA256"
-    ecc_curve: str = "P-256"
-    argon2_params: Optional[Argon2Params] = None
+    operation: str = "encrypt"
+    params: dict = None
 
     def _require_key(self) -> str:
-        if self.algorithm in {"base64", "sha256", "sha3-256"}:
+        if self.algorithm in {"base64", "sha256", "argon2"}:
             return ""
         if self.algorithm == "caesar":
             return self.key or "3"
@@ -478,111 +355,166 @@ class CryptoEngine:
         return self.key
 
     # Public API
-    def process(self, operation: str, payload: str) -> str:
-        """Main processing method for all crypto operations."""
-        if operation == "encrypt":
-            return self.encrypt(payload)
-        elif operation == "decrypt":
-            return self.decrypt(payload)
-        elif operation == "hash":
-            return self.hash(payload)
-        elif operation == "sign":
-            return self.sign(payload)
-        elif operation == "verify":
-            return self.verify(payload)
-        elif operation == "derive_key":
-            return self.derive_key(payload)
-        elif operation == "generate_keypair":
-            return self.generate_keypair()
-        else:
-            raise CryptoServiceError(f"Неподдерживаемая операция: {operation}")
+    def process(self, payload: str = "") -> dict:
+        """Основной метод для обработки всех операций."""
+        try:
+            if self.algorithm in ["sha256", "argon2"] and self.operation == "verify":
+                if self.params and "hash" in self.params:
+                    return self._verify_hash(payload, self.params["hash"])
+                else:
+                    raise CryptoServiceError("Для проверки хэша необходимо передать hash в параметрах")
+            
+            if self.algorithm in ["sha256", "argon2"]:
+                if self.operation == "hash":
+                    return self._hash(payload)
+                else:
+                    raise CryptoServiceError(f"Неподдерживаемая операция '{self.operation}' для алгоритма {self.algorithm}")
+            
+            elif self.algorithm in ["ecc", "rsa"] and self.operation == "generate_keypair":
+                return self._generate_keypair()
+            
+            elif self.algorithm == "ecc" and self.operation in ["sign", "verify"]:
+                return self._ecc_operation(payload)
+            
+            elif self.algorithm == "ecc" and self.operation in ["encrypt", "decrypt"]:
+                return self._ecc_crypto(payload)
+            
+            elif self.is_binary:
+                return {"result": self._dispatch_binary(self.operation)(payload)}
+            else:
+                return {"result": self._dispatch(self.operation)(payload)}
+                
+        except Exception as exc:
+            raise CryptoServiceError(str(exc))
 
-    def encrypt(self, payload: str) -> str:
-        if self.algorithm == "rsa":
-            return rsa_encrypt(payload, self._require_key())
-        elif self.algorithm == "ecc-hybrid":
-            return ecc_encrypt_hybrid(payload, self._require_key())
+    def _hash(self, payload: str) -> dict:
+        """Обработка хэширования."""
+        if self.algorithm == "sha256":
+            return {"hash": hash_sha256(payload)}
+        elif self.algorithm == "argon2":
+            if not ARGON2_AVAILABLE:
+                raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
+            
+            params = self.params or {}
+            result = hash_argon2(
+                payload,
+                time_cost=params.get("time_cost", 2),
+                memory_cost=params.get("memory_cost", 512),
+                parallelism=params.get("parallelism", 2),
+                hash_len=params.get("hash_len", 32)
+            )
+            return {"hash": result["hash"]}
+        raise CryptoServiceError(f"Неподдерживаемый алгоритм хэширования: {self.algorithm}")
+
+    def _verify_hash(self, payload: str, hash_value: str) -> dict:
+        """Проверка хэша для SHA-256 и Argon2."""
+        try:
+            if self.algorithm == "sha256":
+                # Для SHA-256 просто сравниваем хэши
+                computed_hash = hash_sha256(payload)
+                return {"is_valid": computed_hash == hash_value}
+            
+            elif self.algorithm == "argon2":
+                if not ARGON2_AVAILABLE:
+                    raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
+                
+                # Для Argon2 используем специальную функцию проверки
+                try:
+                    hasher = argon2.PasswordHasher()
+                    hasher.verify(hash_value, payload)
+                    return {"is_valid": True}
+                except argon2.exceptions.VerifyMismatchError:
+                    return {"is_valid": False}
+                except Exception as e:
+                    raise HashingError(f"Ошибка при проверке Argon2: {str(e)}")
+            
+            else:
+                raise CryptoServiceError(f"Неподдерживаемый алгоритм для проверки: {self.algorithm}")
+                
+        except Exception as exc:
+            raise HashingError(f"Ошибка при проверке хэша: {str(exc)}")
+
+    def _verify_argon2(self, payload: str, hash_value: str) -> dict:
+        """Verify Argon2 hash."""
+        try:
+            is_valid = verify_argon2(payload, hash_value)
+            return {"is_valid": is_valid}
+        except Exception as exc:
+            raise HashingError(f"Ошибка при проверке Argon2: {str(exc)}") from exc
+
+    def _generate_keypair(self) -> dict:
+        """Генерация ключевых пар."""
+        if self.algorithm == "ecc":
+            keypair = generate_ecc_keypair(self.params.get("curve", "P-256") if self.params else "P-256")
+            return {
+                "public_key": keypair.public_key_b64,
+                "private_key": keypair.private_key_b64,
+                "curve": keypair.curve
+            }
+        elif self.algorithm == "rsa":
+            from .crypto_service import generate_rsa_keypair  # Импортируем здесь
+            keypair = generate_rsa_keypair(self.params.get("bits", 2048) if self.params else 2048)
+            return {
+                "public_key": keypair.public_key_b64,
+                "private_key": keypair.private_key_b64
+            }
+        raise CryptoServiceError(f"Неподдерживаемый алгоритм для генерации ключей: {self.algorithm}")
+
+    def _ecc_operation(self, payload: str) -> dict:
+        """Операции с ECC (подпись/верификация)."""
+        if not self.key:
+            raise CryptoServiceError("Для ECC операций необходим ключ")
         
+        params = self.params or {}
+        hash_algorithm = params.get("hash_algorithm", "SHA256")
+        
+        if self.operation == "sign":
+            signature = sign_message_ecc(payload, self.key, hash_algorithm)
+            return {"signature": signature}
+        elif self.operation == "verify":
+            signature = params.get("signature", "")
+            if not signature:
+                raise CryptoServiceError("Для верификации необходима подпись")
+            is_valid = verify_message_ecc(payload, signature, self.key, hash_algorithm)
+            return {"is_valid": is_valid}
+        
+        raise CryptoServiceError(f"Неподдерживаемая ECC операция: {self.operation}")
+
+    def _ecc_crypto(self, payload: str) -> dict:
+        """Шифрование/дешифрование ECC."""
+        if not self.key:
+            raise CryptoServiceError("Для ECC шифрования необходим ключ")
+        
+        if self.operation == "encrypt":
+            encrypted = encrypt_ecc(payload, self.key)
+            return {"encrypted": encrypted}  # ✅ Возвращаем объект, а не строку
+        elif self.operation == "decrypt":
+            # Парсим JSON, если это строка
+            if isinstance(payload, str):
+                try:
+                    payload_data = json.loads(payload)
+                except json.JSONDecodeError:
+                    raise CryptoServiceError("Некорректный JSON для расшифрования")
+            else:
+                payload_data = payload
+            
+            decrypted = decrypt_ecc(payload_data, self.key)
+            return {"decrypted": decrypted}
+        
+        raise CryptoServiceError(f"Неподдерживаемая ECC операция: {self.operation}")
+
+    # Public API
+    def encrypt(self, payload: str) -> str:
         if self.is_binary:
+            # Для бинарных данных payload - это base64 строка
             return self._dispatch_binary("encrypt")(payload)
         return self._dispatch("encrypt")(payload)
 
     def decrypt(self, payload: str) -> str:
-        if self.algorithm == "rsa":
-            return rsa_decrypt(payload, self._require_key())
-        elif self.algorithm == "ecc-hybrid":
-            return ecc_decrypt_hybrid(payload, self._require_key())
-        
         if self.is_binary:
+            # Для бинарных данных payload - это base64 строка
             return self._dispatch_binary("decrypt")(payload)
         return self._dispatch("decrypt")(payload)
-
-    def hash(self, payload: str) -> str:
-        if self.is_binary:
-            return self._dispatch_binary_hash()(payload)
-        return self._dispatch_hash()(payload)
-
-    def sign(self, payload: str) -> str:
-        if self.algorithm == "rsa-pss":
-            return sign_message_rsa_pss(payload, self._require_key())
-        elif self.algorithm == "ecdsa":
-            return ecdsa_sign(payload, self._require_key(), self.hash_algorithm)
-        else:
-            raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает подпись")
-
-    def verify(self, payload: str) -> bool:
-        # For verification, payload should be JSON with message, signature, and optionally public key
-        try:
-            data = json.loads(payload)
-            message = data["message"]
-            signature = data["signature"]
-            public_key = data.get("public_key", self.key)
-            
-            if not public_key:
-                raise CryptoServiceError("Необходим открытый ключ для проверки подписи")
-            
-            if self.algorithm == "rsa-pss":
-                return verify_message_rsa_pss(message, signature, public_key)
-            elif self.algorithm == "ecdsa":
-                return ecdsa_verify(message, signature, public_key, self.hash_algorithm)
-            else:
-                raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает проверку подписи")
-        except Exception as exc:
-            raise CryptoServiceError(f"Ошибка при проверке подписи: {exc}") from exc
-
-    def derive_key(self, payload: str) -> str:
-        if self.algorithm == "argon2":
-            return argon2_derive_key(payload, self.key)
-        elif self.algorithm == "ecdh":
-            if not self.key:
-                raise CryptoServiceError("Необходим открытый ключ для ECDH")
-            return ecdh_derive_shared_secret(self._require_key(), self.key)
-        else:
-            raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает производные ключи")
-
-    def generate_keypair(self) -> str:
-        if self.algorithm == "rsa":
-            key_size = int(self.key) if self.key and self.key.isdigit() else 2048
-            keypair = generate_rsa_keypair(key_size)
-            result = {
-                "public_key": keypair.public_key_b64,
-                "private_key": keypair.private_key_b64,
-                "algorithm": "RSA",
-                "key_size": key_size
-            }
-        elif self.algorithm == "ecc":
-            curve = self.key if self.key in ["P-256", "P-384", "P-521"] else self.ecc_curve
-            keypair = generate_ecc_keypair(curve)
-            result = {
-                "public_key": keypair.public_key_b64,
-                "private_key": keypair.private_key_b64,
-                "algorithm": "ECC",
-                "curve": keypair.curve
-            }
-        else:
-            raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает генерацию ключевой пары")
-        
-        return json.dumps(result)
 
     # Internal helpers для текстовых данных
     def _dispatch(self, operation: str) -> Callable[[str], str]:
@@ -619,23 +551,6 @@ class CryptoEngine:
 
         encryptor, decryptor = lookup[self.algorithm]
         return encryptor if operation == "encrypt" else decryptor
-
-    # Hash dispatch
-    def _dispatch_hash(self) -> Callable[[str], str]:
-        if self.algorithm == "sha256":
-            return sha256_hash
-        elif self.algorithm == "sha3-256":
-            return sha3_256_hash
-        elif self.algorithm == "argon2":
-            return lambda p: argon2_hash(p, self.argon2_params)
-        else:
-            raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает хэширование")
-
-    def _dispatch_binary_hash(self) -> Callable[[str], str]:
-        if self.algorithm == "sha256":
-            return sha256_hash_binary
-        else:
-            raise CryptoServiceError(f"Алгоритм {self.algorithm} не поддерживает хэширование бинарных данных")
 
     # AES (GCM) - для текстовых данных
     def _aes_encrypt(self, payload: str) -> str:

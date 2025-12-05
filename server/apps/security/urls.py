@@ -8,7 +8,7 @@ from apps.security.views import (
     UserOperationHistoryView,
     WebImplementationExampleListView,
     CryptoCategoryListView,
-    CryptoAlgorithmListView,
+    CryptoAlgorithmListView
 )
 
 

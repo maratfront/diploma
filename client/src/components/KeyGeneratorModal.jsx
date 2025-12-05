@@ -24,6 +24,7 @@ function KeyGeneratorModal({ isOpen, onClose, onKeyGenerated }) {
   const [history, setHistory] = React.useState([]);
   const [showHistory, setShowHistory] = React.useState(false);
 
+  // Выносим вычисления за пределы условных операторов
   const strength = React.useMemo(
     () => KeyGenerator.assessKeyStrength(generatedKey),
     [generatedKey]
@@ -39,12 +40,14 @@ function KeyGeneratorModal({ isOpen, onClose, onKeyGenerated }) {
       const activeMode = modeOverride || mode;
       let key;
 
-      console.log('Generating key with mode:', activeMode, 'current mode:', mode);
+      console.log('Generating key with mode:', activeMode, 'current mode:', mode); // Для отладки
 
       if (activeMode === 'password') {
+        // ГЕНЕРАЦИЯ ПАРОЛЯ (случайные символы)
         console.log('Generating password with options:', options);
         key = KeyGenerator.generateSecureKey(options);
       } else {
+        // ГЕНЕРАЦИЯ ПАССФРАЗЫ (слова)
         console.log('Generating passphrase with options:', passphraseOptions);
         key = KeyGenerator.generatePassphrase(
           passphraseOptions.wordCount,
@@ -145,7 +148,7 @@ function KeyGeneratorModal({ isOpen, onClose, onKeyGenerated }) {
               onClick={() => {
                 console.log('Tab clicked:', tab.id);
                 setMode(tab.id);
-                handleGenerate(tab.id);
+                handleGenerate(tab.id); // Передаем режим явно
               }}
               className={`flex-1 px-4 py-3 rounded-xl font-medium transition-all flex items-center justify-center space-x-2 ${mode === tab.id
                 ? 'bg-[var(--primary-color)] text-white shadow-lg'
@@ -375,16 +378,20 @@ function PasswordResult({ generatedKey, strength, entropy, onGenerate, onUseKey,
           {showHistory && (
             <div className="mt-3 space-y-2 max-h-60 overflow-y-auto">
               {history.map((entry, idx) => {
+                // Безопасное получение пароля из записи
                 const password = entry.password || entry.hashedPassword || '';
+                // Безопасное получение метки надежности
                 const strengthLabel = entry.strength?.label || 'Н/Д';
 
                 return (
                   <div
                     key={idx}
                     onClick={() => {
+                      // Проверяем, есть ли оригинальный пароль для подстановки
                       if (entry.password) {
                         onSelectFromHistory(entry.password);
                       } else if (entry.hashedPassword) {
+                        // Если есть только хеш, показываем сообщение
                         console.warn('Cannot use hashed password from history');
                         NotificationManager.warning('Нельзя использовать сохраненный хешированный пароль');
                       }

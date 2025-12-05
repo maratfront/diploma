@@ -28,6 +28,26 @@ export const ALGORITHM_INFO = {
     name: 'Base64',
     description: 'Кодирование данных (не шифрование, используется для передачи данных)',
     security: 'Нет защиты'
+  },
+  'sha256': {
+    name: 'SHA-256',
+    description: 'Криптографический хэш (используется в блокчейне, SSL/TLS)',
+    security: 'Высокая'
+  },
+  'argon2': {
+    name: 'Argon2',
+    description: 'Победитель Password Hashing Competition 2015 (для хэширования паролей)',
+    security: 'Очень высокая'
+  },
+  'ecc': {
+    name: 'ECC',
+    description: 'Криптография на эллиптических кривых (малые ключи, высокая безопасность)',
+    security: 'Очень высокая'
+  },
+  'rsa': {
+    name: 'RSA',
+    description: 'Асимметричное шифрование (цифровые подписи, шифрование)',
+    security: 'Высокая'
   }
 };
 
@@ -36,6 +56,8 @@ export const MENU_ITEMS = [
   { id: 'encryption', icon: 'lock', label: 'Текстовое шифрование', description: 'Шифрование текста' },
   { id: 'file-encryption', icon: 'file-lock', label: 'Шифрование файлов', description: 'Защита файлов' },
   { id: 'digital-signatures', icon: 'shield-check', label: 'Электронные подписи', description: 'Цифровая подпись' },
+  { id: 'hashing', icon: 'hash', label: 'Хэширование', description: 'SHA-256, Argon2' },
+  { id: 'ecc', icon: 'circle', label: 'ECC криптография', description: 'Эллиптические кривые' },
   { id: 'comparison', icon: 'chart-bar', label: 'Сравнение алгоритмов', description: 'Анализ методов' },
   { id: 'web-implementation', icon: 'code', label: 'Веб-реализация', description: 'Примеры кода' },
   { id: 'crypto-info', icon: 'book-open', label: 'База знаний', description: 'Теория криптографии' },
@@ -43,23 +65,30 @@ export const MENU_ITEMS = [
   { id: 'profile', icon: 'user', label: 'Личный кабинет', description: 'Настройки профиля' }
 ];
 
+// Добавляем новые типы операций
 export const OPERATION_TYPES = {
   ENCRYPT: 'encrypt',
   DECRYPT: 'decrypt',
   SIGN: 'sign',
-  VERIFY: 'verify'
+  VERIFY: 'verify',
+  HASH: 'hash',
+  GENERATE_KEYPAIR: 'generate_keypair'
 };
 
 export const OPERATION_LABELS = {
   encrypt: 'Шифрование',
   decrypt: 'Расшифровка',
   sign: 'Подпись',
-  verify: 'Проверка'
+  verify: 'Проверка',
+  hash: 'Хэширование',
+  generate_keypair: 'Генерация ключей'
 };
 
 export const OPERATION_ICONS = {
   encrypt: 'lock',
   decrypt: 'lock-open',
   sign: 'pen-tool',
-  verify: 'shield-check'
+  verify: 'shield-check',
+  hash: 'hash',
+  generate_keypair: 'key'
 };

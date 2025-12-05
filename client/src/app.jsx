@@ -4,6 +4,8 @@ import Sidebar from './components/Sidebar.jsx'
 import Dashboard from './components/Dashboard.jsx'
 import EncryptionPanel from './components/EncryptionPanel.jsx'
 import FileEncryption from './components/FileEncryption.jsx'
+import ECCPanel from './components/ECCPanel.jsx'
+import HashingPanel from './components/HashingPanel.jsx'
 import DigitalSignatures from './components/DigitalSignatures.jsx'
 import AlgorithmComparison from './components/AlgorithmComparison.jsx'
 import WebImplementation from './components/WebImplementation.jsx'
@@ -135,6 +137,8 @@ function App() {
             <main className="flex-1 p-4 sm:p-6 lg:p-6">
               {currentView === 'dashboard' && <Dashboard />}
               {currentView === 'encryption' && <EncryptionPanel />}
+              {currentView === 'hashing' && <HashingPanel />}
+              {currentView === 'ecc' && <ECCPanel />}
               {currentView === 'file-encryption' && <FileEncryption />}
               {currentView === 'digital-signatures' && <DigitalSignatures />}
               {currentView === 'comparison' && <AlgorithmComparison />}
