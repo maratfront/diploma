@@ -10,7 +10,7 @@ async function requestCrypto(operation, payload, algorithm, key, isBinary = fals
       payload,
       algorithm,
       key: key || '',
-      is_binary: isBinary // Флаг для сервера, что это бинарные данные
+      is_binary: isBinary
     })
   })
 
