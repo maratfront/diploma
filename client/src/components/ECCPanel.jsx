@@ -12,24 +12,62 @@ import CopyButton from './common/CopyButton.jsx'
 
 function ECCPanel() {
 	try {
-		const [operation, setOperation] = React.useState('generate');
+		const [operation, setOperation] = React.useState('sign');
 		const [message, setMessage] = React.useState('');
 		const [encryptedData, setEncryptedData] = React.useState('');
-		const [privateKey, setPrivateKey] = React.useState('');
-		const [publicKey, setPublicKey] = React.useState('');
 		const [signature, setSignature] = React.useState('');
 		const [isProcessing, setIsProcessing] = React.useState(false);
 		const [curve, setCurve] = React.useState('P-256');
 		const [hashAlgorithm, setHashAlgorithm] = React.useState('SHA256');
 
-		// Результаты операций
-		const [generatedKeyPair, setGeneratedKeyPair] = React.useState(null);
+		// Хранилище для сохранения данных при переключении операций
+		const [operationData, setOperationData] = React.useState({
+			signVerify: {
+				message: '',
+				signature: '',
+				generatedSignature: ''
+			},
+			encryptDecrypt: {
+				message: '',
+				encryptedData: '',
+				encryptedResult: null,
+				decryptedResult: ''
+			}
+		});
+
+		// Ключи теперь генерируются автоматически
+		const [keyPair, setKeyPair] = React.useState(null);
 		const [generatedSignature, setGeneratedSignature] = React.useState('');
 		const [verificationResult, setVerificationResult] = React.useState(null);
 		const [encryptedResult, setEncryptedResult] = React.useState(null);
 		const [decryptedResult, setDecryptedResult] = React.useState('');
 
-		// Функция для декодирования Base64 в PEM
+		// Автоматическая генерация ключей при монтировании
+		React.useEffect(() => {
+			generateNewKeyPair();
+		}, [curve]);
+
+		// Сохранение данных при переключении операций
+		React.useEffect(() => {
+			if (operation === 'sign' || operation === 'verify') {
+				// При переключении на sign/verify, восстанавливаем сохраненные данные
+				const savedData = operationData.signVerify;
+				setMessage(savedData.message);
+				setSignature(savedData.signature);
+				if (operation === 'verify' && savedData.generatedSignature && !savedData.signature) {
+					// Если есть сгенерированная подпись, но поле подписи пустое, заполняем его
+					setSignature(savedData.generatedSignature);
+				}
+			} else {
+				// При переключении на encrypt/decrypt, восстанавливаем сохраненные данные
+				const savedData = operationData.encryptDecrypt;
+				setMessage(savedData.message);
+				setEncryptedData(savedData.encryptedData);
+				setEncryptedResult(savedData.encryptedResult);
+				setDecryptedResult(savedData.decryptedResult);
+			}
+		}, [operation]);
+
 		const decodeBase64ToPEM = (base64Str) => {
 			try {
 				const decoded = atob(base64Str);
@@ -40,33 +78,21 @@ function ECCPanel() {
 			}
 		};
 
-		// Функция для форматирования PEM ключа
-		const formatPEMKey = (pem) => {
-			if (!pem) return '';
-			if (pem.includes('-----BEGIN')) return pem; // Уже в PEM формате
-			return pem; // Если не PEM, возвращаем как есть
-		};
-
-		const generateKeys = async () => {
+		const generateNewKeyPair = async () => {
 			setIsProcessing(true);
 			try {
 				const result = await generateECCKeyPair(curve);
 
-				// Декодируем Base64 в читаемый PEM формат
 				const publicKeyPEM = decodeBase64ToPEM(result.public_key);
 				const privateKeyPEM = decodeBase64ToPEM(result.private_key);
 
-				setGeneratedKeyPair({
-					public_key: result.public_key, // Оригинальный Base64
-					private_key: result.private_key, // Оригинальный Base64
-					public_key_pem: publicKeyPEM, // Декодированный PEM
-					private_key_pem: privateKeyPEM, // Декодированный PEM
+				setKeyPair({
+					public_key: result.public_key,
+					private_key: result.private_key,
+					public_key_pem: publicKeyPEM,
+					private_key_pem: privateKeyPEM,
 					curve: result.curve
 				});
-
-				// Автоматически заполняем поля для использования
-				setPublicKey(result.public_key);
-				setPrivateKey(result.private_key);
 
 				NotificationManager.success('Ключевая пара ECC успешно сгенерирована!');
 			} catch (error) {
@@ -82,15 +108,25 @@ function ECCPanel() {
 				NotificationManager.warning('Введите сообщение для подписи');
 				return;
 			}
-			if (!privateKey.trim()) {
-				NotificationManager.error('Введите приватный ключ');
+			if (!keyPair?.private_key) {
+				NotificationManager.error('Приватный ключ не сгенерирован');
 				return;
 			}
 
 			setIsProcessing(true);
 			try {
-				const result = await signECC(message, privateKey, hashAlgorithm);
+				const result = await signECC(message, keyPair.private_key, hashAlgorithm);
 				setGeneratedSignature(result.signature);
+
+				// Сохраняем данные в хранилище
+				setOperationData(prev => ({
+					...prev,
+					signVerify: {
+						...prev.signVerify,
+						message: message,
+						generatedSignature: result.signature
+					}
+				}));
 
 				await addToHistory({
 					type: 'sign',
@@ -110,15 +146,29 @@ function ECCPanel() {
 		};
 
 		const handleVerify = async () => {
-			if (!message.trim() || !signature.trim() || !publicKey.trim()) {
+			if (!message.trim() || !signature.trim()) {
 				NotificationManager.warning('Заполните все поля для верификации');
+				return;
+			}
+			if (!keyPair?.public_key) {
+				NotificationManager.error('Публичный ключ не сгенерирован');
 				return;
 			}
 
 			setIsProcessing(true);
 			try {
-				const result = await verifyECC(message, signature, publicKey, hashAlgorithm);
+				const result = await verifyECC(message, signature, keyPair.public_key, hashAlgorithm);
 				setVerificationResult(result.is_valid);
+
+				// Сохраняем данные в хранилище
+				setOperationData(prev => ({
+					...prev,
+					signVerify: {
+						...prev.signVerify,
+						message: message,
+						signature: signature
+					}
+				}));
 
 				await addToHistory({
 					type: 'verify',
@@ -147,16 +197,15 @@ function ECCPanel() {
 				NotificationManager.warning('Введите сообщение для шифрования');
 				return;
 			}
-			if (!publicKey.trim()) {
-				NotificationManager.error('Введите публичный ключ');
+			if (!keyPair?.public_key) {
+				NotificationManager.error('Публичный ключ не сгенерирован');
 				return;
 			}
 
 			setIsProcessing(true);
 			try {
-				const result = await encryptECC(message, publicKey);
+				const result = await encryptECC(message, keyPair.public_key);
 
-				// Парсим JSON строку в объект
 				let parsedEncrypted;
 				try {
 					parsedEncrypted = JSON.parse(result.encrypted);
@@ -165,6 +214,19 @@ function ECCPanel() {
 				}
 
 				setEncryptedResult(parsedEncrypted);
+				const encryptedDataStr = JSON.stringify(parsedEncrypted, null, 2);
+				setEncryptedData(encryptedDataStr);
+
+				// Сохраняем данные в хранилище
+				setOperationData(prev => ({
+					...prev,
+					encryptDecrypt: {
+						...prev.encryptDecrypt,
+						message: message,
+						encryptedData: encryptedDataStr,
+						encryptedResult: parsedEncrypted
+					}
+				}));
 
 				NotificationManager.success('Сообщение успешно зашифровано!');
 			} catch (error) {
@@ -180,14 +242,13 @@ function ECCPanel() {
 				NotificationManager.warning('Введите зашифрованные данные');
 				return;
 			}
-			if (!privateKey.trim()) {
-				NotificationManager.error('Введите приватный ключ');
+			if (!keyPair?.private_key) {
+				NotificationManager.error('Приватный ключ не сгенерирован');
 				return;
 			}
 
 			setIsProcessing(true);
 			try {
-				// Пробуем распарсить JSON, если это необходимо
 				let dataToDecrypt = encryptedData;
 				try {
 					const parsed = JSON.parse(encryptedData);
@@ -198,8 +259,18 @@ function ECCPanel() {
 					// Если не JSON, используем как есть
 				}
 
-				const result = await decryptECC(dataToDecrypt, privateKey);
+				const result = await decryptECC(dataToDecrypt, keyPair.private_key);
 				setDecryptedResult(result.decrypted);
+
+				// Сохраняем данные в хранилище
+				setOperationData(prev => ({
+					...prev,
+					encryptDecrypt: {
+						...prev.encryptDecrypt,
+						encryptedData: encryptedData,
+						decryptedResult: result.decrypted
+					}
+				}));
 
 				NotificationManager.success('Сообщение успешно расшифровано!');
 			} catch (error) {
@@ -213,17 +284,28 @@ function ECCPanel() {
 		const clearFields = () => {
 			setMessage('');
 			setEncryptedData('');
-			setPrivateKey('');
-			setPublicKey('');
 			setSignature('');
-			setGeneratedKeyPair(null);
 			setGeneratedSignature('');
 			setVerificationResult(null);
 			setEncryptedResult(null);
 			setDecryptedResult('');
+
+			// Очищаем хранилище
+			setOperationData({
+				signVerify: {
+					message: '',
+					signature: '',
+					generatedSignature: ''
+				},
+				encryptDecrypt: {
+					message: '',
+					encryptedData: '',
+					encryptedResult: null,
+					decryptedResult: ''
+				}
+			});
 		};
 
-		// Функция для форматированного отображения JSON
 		const formatJSON = (obj) => {
 			if (!obj) return '';
 			if (typeof obj === 'string') {
@@ -236,6 +318,46 @@ function ECCPanel() {
 			return JSON.stringify(obj, null, 2);
 		};
 
+		// Обработчик переключения операции с сохранением данных
+		const handleOperationChange = (newOperation) => {
+			// Сохраняем текущие данные перед переключением
+			if (operation === 'sign' || operation === 'verify') {
+				setOperationData(prev => ({
+					...prev,
+					signVerify: {
+						...prev.signVerify,
+						message: message,
+						signature: signature
+					}
+				}));
+			} else {
+				setOperationData(prev => ({
+					...prev,
+					encryptDecrypt: {
+						...prev.encryptDecrypt,
+						message: message,
+						encryptedData: encryptedData
+					}
+				}));
+			}
+
+			// Очищаем временные результаты при переключении
+			setGeneratedSignature('');
+			setVerificationResult(null);
+			setDecryptedResult('');
+			setEncryptedResult(null);
+
+			setOperation(newOperation);
+		};
+
+		// Операции для переключателя
+		const operations = [
+			{ id: 'sign', label: 'Подписать', icon: 'pen-tool' },
+			{ id: 'verify', label: 'Проверить', icon: 'check' },
+			{ id: 'encrypt', label: 'Зашифровать', icon: 'lock' },
+			{ id: 'decrypt', label: 'Расшифровать', icon: 'lock-open' }
+		];
+
 		return (
 			<div className="space-y-6 sm:space-y-8 max-w-7xl mx-auto" data-name="ecc-panel">
 				<div className="section-header">
@@ -246,53 +368,36 @@ function ECCPanel() {
 				</div>
 
 				<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
+					{/* Левая колонка - ключи и настройки */}
 					<div className="card p-4 sm:p-6 lg:p-8">
 						<div className="flex items-center space-x-3 mb-4 sm:mb-6">
 							<div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
 								<div className="icon-key text-lg sm:text-xl text-white"></div>
 							</div>
-							<h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Настройки ECC</h3>
+							<h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">Ключи ECC</h3>
 						</div>
 
 						<div className="space-y-6">
+							{/* Выбор кривой */}
 							<div>
-								<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Операция</label>
+								<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Кривая</label>
 								<select
-									value={operation}
+									value={curve}
 									onChange={(e) => {
-										setOperation(e.target.value);
-										// Очищаем предыдущие результаты при смене операции
-										setGeneratedKeyPair(null);
-										setGeneratedSignature('');
-										setVerificationResult(null);
-										setEncryptedResult(null);
-										setDecryptedResult('');
+										setCurve(e.target.value);
+										clearFields();
 									}}
 									className="input-field"
+									disabled={isProcessing}
 								>
-									<option value="generate">Генерация ключей</option>
-									<option value="sign">Цифровая подпись</option>
-									<option value="verify">Проверка подписи</option>
-									<option value="encrypt">Шифрование</option>
-									<option value="decrypt">Расшифрование</option>
+									<option value="P-256">P-256 (secp256r1) - Наиболее распространенная</option>
+									<option value="P-384">P-384 (secp384r1) - Высокая безопасность</option>
+									<option value="P-521">P-521 (secp521r1) - Максимальная безопасность</option>
 								</select>
+								<p className="text-xs text-[var(--text-secondary)] mt-1">При смене кривой генерируются новые ключи</p>
 							</div>
 
-							{operation !== 'decrypt' && (
-								<div>
-									<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Кривая</label>
-									<select
-										value={curve}
-										onChange={(e) => setCurve(e.target.value)}
-										className="input-field"
-									>
-										<option value="P-256">P-256 (secp256r1) - Наиболее распространенная</option>
-										<option value="P-384">P-384 (secp384r1) - Высокая безопасность</option>
-										<option value="P-521">P-521 (secp521r1) - Максимальная безопасность</option>
-									</select>
-								</div>
-							)}
-
+							{/* Хэш-алгоритм для подписи/проверки */}
 							{(operation === 'sign' || operation === 'verify') && (
 								<div>
 									<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Хэш-алгоритм</label>
@@ -300,6 +405,7 @@ function ECCPanel() {
 										value={hashAlgorithm}
 										onChange={(e) => setHashAlgorithm(e.target.value)}
 										className="input-field"
+										disabled={isProcessing}
 									>
 										<option value="SHA256">SHA-256</option>
 										<option value="SHA512">SHA-512</option>
@@ -307,261 +413,175 @@ function ECCPanel() {
 								</div>
 							)}
 
-							<button onClick={clearFields} className="btn-secondary w-full">
-								<div className="icon-refresh-cw text-lg mr-2"></div>
-								Очистить все поля
-							</button>
+							{/* Отображение ключей */}
+							{keyPair && (
+								<div className="space-y-4">
+									<div>
+										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+											Публичный ключ (Base64)
+										</label>
+										<div className="p-3 bg-[var(--bg-tertiary)] rounded-xl">
+											<p className="text-xs font-mono text-[var(--text-secondary)] break-all">
+												{keyPair.public_key.substring(0, 100)}...
+											</p>
+										</div>
+									</div>
 
-							{/* Отображение сгенерированных ключей */}
-							{operation === 'generate' && generatedKeyPair && (
-								<div className="mt-4 p-4 bg-[var(--bg-tertiary)] rounded-xl">
-									<h4 className="font-semibold text-[var(--text-primary)] mb-2">Сгенерированные ключи</h4>
-									<p className="text-xs text-[var(--text-secondary)] mb-2">Кривая: {generatedKeyPair.curve}</p>
-									<div className="space-y-2">
-										<div>
-											<p className="text-xs font-semibold text-[var(--text-secondary)]">Публичный ключ (Base64):</p>
-											<p className="text-xs font-mono break-all">{generatedKeyPair.public_key.substring(0, 80)}...</p>
+									<div>
+										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-2">
+											Приватный ключ (Base64)
+										</label>
+										<div className="p-3 bg-[var(--bg-tertiary)] rounded-xl">
+											<p className="text-xs font-mono text-[var(--text-secondary)] break-all">
+												{keyPair.private_key.substring(0, 100)}...
+											</p>
 										</div>
-										<div>
-											<p className="text-xs font-semibold text-[var(--text-secondary)]">Приватный ключ (Base64):</p>
-											<p className="text-xs font-mono break-all">{generatedKeyPair.private_key.substring(0, 80)}...</p>
-										</div>
+										<p className="text-xs text-[var(--text-secondary)] mt-1">Кривая: {keyPair.curve}</p>
+									</div>
+
+									<div className="flex space-x-3">
+										<button
+											onClick={generateNewKeyPair}
+											disabled={isProcessing}
+											className="btn-secondary flex-1 disabled:opacity-50"
+										>
+											<div className="icon-refresh-cw text-lg mr-2"></div>
+											Новые ключи
+										</button>
+										<button
+											onClick={clearFields}
+											className="btn-secondary flex-1"
+										>
+											<div className="icon-x text-lg mr-2"></div>
+											Очистить
+										</button>
 									</div>
 								</div>
 							)}
 						</div>
 					</div>
 
+					{/* Правая колонка - операции */}
 					<div className="xl:col-span-2">
 						<div className="card p-4 sm:p-6 lg:p-8">
-							<div className="flex items-center space-x-3 mb-4 sm:mb-6">
-								<div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
-									<div className="icon-terminal text-lg sm:text-xl text-white"></div>
+							<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
+								<div className="flex items-center space-x-3">
+									<div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--accent-color)] rounded-xl flex items-center justify-center">
+										<div className="icon-shield-check text-lg sm:text-xl text-white"></div>
+									</div>
+									<h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
+										{operation === 'sign' ? 'Создание подписи' :
+											operation === 'verify' ? 'Проверка подписи' :
+												operation === 'encrypt' ? 'Шифрование' : 'Расшифрование'}
+									</h3>
 								</div>
-								<h3 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]">
-									{operation === 'generate' ? 'Генерация ключей ECC' :
-										operation === 'sign' ? 'Создание цифровой подписи' :
-											operation === 'verify' ? 'Проверка цифровой подписи' :
-												operation === 'encrypt' ? 'Шифрование сообщения' : 'Расшифрование сообщения'}
-								</h3>
+
+								{/* Переключатель операций */}
+								<div className="grid grid-cols-4 gap-2 w-full sm:w-auto">
+									{operations.map(op => (
+										<button
+											key={op.id}
+											onClick={() => handleOperationChange(op.id)}
+											className={`px-3 py-2 rounded-xl font-medium text-xs sm:text-sm transition-all duration-300 ${operation === op.id
+												? 'bg-[var(--primary-color)] text-white'
+												: 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]'
+												}`}
+											disabled={isProcessing}
+										>
+											<div className={`icon-${op.icon} inline-block mr-1`}></div>
+											{op.label}
+										</button>
+									))}
+								</div>
 							</div>
 
 							<div className="space-y-6">
-								{/* Поля ввода в зависимости от операции */}
-
-								{operation === 'generate' ? (
+								{/* Поле сообщения для всех операций, кроме расшифрования */}
+								{(operation === 'sign' || operation === 'verify' || operation === 'encrypt') && (
 									<div>
-										<button
-											onClick={generateKeys}
+										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
+											{operation === 'sign' ? 'Сообщение для подписи' :
+												operation === 'verify' ? 'Сообщение для проверки' :
+													'Сообщение для шифрования'}
+										</label>
+										<textarea
+											value={message}
+											onChange={(e) => setMessage(e.target.value)}
+											className="input-field h-32 resize-none"
+											placeholder={operation === 'encrypt'
+												? "Введите сообщение для шифрования..."
+												: "Введите текст сообщения..."}
 											disabled={isProcessing}
-											className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{isProcessing ? (
-												<>
-													<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
-													Генерация ключей...
-												</>
-											) : (
-												<>
-													<div className="icon-key text-lg mr-2"></div>
-													Сгенерировать ключевую пару
-												</>
-											)}
-										</button>
+										/>
 									</div>
-								) : null}
-
-								{operation === 'sign' && (
-									<>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Приватный ключ (Base64)
-											</label>
-											<textarea
-												value={privateKey}
-												onChange={(e) => setPrivateKey(e.target.value)}
-												className="input-field h-24 resize-none font-mono text-sm"
-												placeholder="Введите приватный ключ в формате Base64..."
-											/>
-										</div>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Сообщение для подписи
-											</label>
-											<textarea
-												value={message}
-												onChange={(e) => setMessage(e.target.value)}
-												className="input-field h-32 resize-none"
-												placeholder="Введите сообщение для подписи..."
-											/>
-										</div>
-										<button
-											onClick={handleSign}
-											disabled={isProcessing || !privateKey.trim() || !message.trim()}
-											className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{isProcessing ? (
-												<>
-													<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
-													Создание подписи...
-												</>
-											) : (
-												<>
-													<div className="icon-pen-tool text-lg mr-2"></div>
-													Подписать сообщение
-												</>
-											)}
-										</button>
-									</>
 								)}
 
+								{/* Поле подписи для проверки */}
 								{operation === 'verify' && (
-									<>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Публичный ключ (Base64)
-											</label>
-											<textarea
-												value={publicKey}
-												onChange={(e) => setPublicKey(e.target.value)}
-												className="input-field h-24 resize-none font-mono text-sm"
-												placeholder="Введите публичный ключ в формате Base64..."
-											/>
-										</div>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Сообщение для проверки
-											</label>
-											<textarea
-												value={message}
-												onChange={(e) => setMessage(e.target.value)}
-												className="input-field h-24 resize-none"
-												placeholder="Введите сообщение для проверки..."
-											/>
-										</div>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Подпись (Base64)
-											</label>
-											<textarea
-												value={signature}
-												onChange={(e) => setSignature(e.target.value)}
-												className="input-field h-24 resize-none font-mono text-sm"
-												placeholder="Введите подпись в формате Base64..."
-											/>
-										</div>
-										<button
-											onClick={handleVerify}
-											disabled={isProcessing || !publicKey.trim() || !message.trim() || !signature.trim()}
-											className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{isProcessing ? (
-												<>
-													<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
-													Проверка подписи...
-												</>
-											) : (
-												<>
-													<div className="icon-check-circle text-lg mr-2"></div>
-													Проверить подпись
-												</>
-											)}
-										</button>
-									</>
+									<div>
+										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
+											Подпись для проверки (Base64)
+										</label>
+										<textarea
+											value={signature}
+											onChange={(e) => setSignature(e.target.value)}
+											className="input-field h-24 resize-none font-mono text-sm"
+											placeholder="Введите подпись в формате Base64..."
+											disabled={isProcessing}
+										/>
+									</div>
 								)}
 
-								{operation === 'encrypt' && (
-									<>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Публичный ключ получателя (Base64)
-											</label>
-											<textarea
-												value={publicKey}
-												onChange={(e) => setPublicKey(e.target.value)}
-												className="input-field h-24 resize-none font-mono text-sm"
-												placeholder="Введите публичный ключ в формате Base64..."
-											/>
-										</div>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Сообщение для шифрования
-											</label>
-											<textarea
-												value={message}
-												onChange={(e) => setMessage(e.target.value)}
-												className="input-field h-32 resize-none"
-												placeholder="Введите сообщение для шифрования..."
-											/>
-										</div>
-										<button
-											onClick={handleEncrypt}
-											disabled={isProcessing || !publicKey.trim() || !message.trim()}
-											className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{isProcessing ? (
-												<>
-													<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
-													Шифрование...
-												</>
-											) : (
-												<>
-													<div className="icon-lock text-lg mr-2"></div>
-													Зашифровать сообщение
-												</>
-											)}
-										</button>
-									</>
-								)}
-
+								{/* Поле зашифрованных данных для расшифрования */}
 								{operation === 'decrypt' && (
-									<>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Приватный ключ (Base64)
-											</label>
-											<textarea
-												value={privateKey}
-												onChange={(e) => setPrivateKey(e.target.value)}
-												className="input-field h-32 resize-none font-mono text-sm"
-												placeholder="Введите приватный ключ в формате Base64..."
-											/>
-										</div>
-										<div>
-											<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
-												Зашифрованные данные (JSON)
-											</label>
-											<textarea
-												value={encryptedData}
-												onChange={(e) => setEncryptedData(e.target.value)}
-												className="input-field h-32 resize-none font-mono text-sm"
-												placeholder='Введите зашифрованные данные в формате JSON: {"ephemeral_pubkey": "...", "nonce": "...", "tag": "...", "ciphertext": "..."}'
-											/>
-										</div>
-										<button
-											onClick={handleDecrypt}
-											disabled={isProcessing || !privateKey.trim() || !encryptedData.trim()}
-											className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-										>
-											{isProcessing ? (
-												<>
-													<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
-													Расшифрование...
-												</>
-											) : (
-												<>
-													<div className="icon-lock-open text-lg mr-2"></div>
-													Расшифровать сообщение
-												</>
-											)}
-										</button>
-									</>
+									<div>
+										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
+											Зашифрованные данные (JSON)
+										</label>
+										<textarea
+											value={encryptedData}
+											onChange={(e) => setEncryptedData(e.target.value)}
+											className="input-field h-32 resize-none font-mono text-sm"
+											placeholder='Введите зашифрованные данные в формате JSON: {"ephemeral_pubkey": "...", "nonce": "...", "tag": "...", "ciphertext": "..."}'
+											disabled={isProcessing}
+										/>
+									</div>
 								)}
+
+								{/* Кнопка выполнения операции */}
+								<button
+									onClick={operation === 'sign' ? handleSign :
+										operation === 'verify' ? handleVerify :
+											operation === 'encrypt' ? handleEncrypt : handleDecrypt}
+									disabled={isProcessing ||
+										(operation === 'sign' && !message.trim()) ||
+										(operation === 'verify' && (!message.trim() || !signature.trim())) ||
+										(operation === 'encrypt' && !message.trim()) ||
+										(operation === 'decrypt' && !encryptedData.trim())}
+									className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+								>
+									{isProcessing ? (
+										<>
+											<div className="icon-loader-2 text-lg mr-2 animate-spin"></div>
+											{operation === 'sign' ? 'Создание подписи...' :
+												operation === 'verify' ? 'Проверка подписи...' :
+													operation === 'encrypt' ? 'Шифрование...' : 'Расшифрование...'}
+										</>
+									) : (
+										<>
+											<div className={`icon-${operation === 'sign' ? 'pen-tool' :
+												operation === 'verify' ? 'check-circle' :
+													operation === 'encrypt' ? 'lock' : 'lock-open'} text-lg mr-2`}></div>
+											{operation === 'sign' ? 'Подписать сообщение' :
+												operation === 'verify' ? 'Проверить подпись' :
+													operation === 'encrypt' ? 'Зашифровать сообщение' : 'Расшифровать сообщение'}
+										</>
+									)}
+								</button>
 
 								{/* Отображение результатов */}
-
 								{operation === 'sign' && generatedSignature && (
-									<div className="mt-6 p-4 bg-[var(--bg-tertiary)] rounded-xl">
+									<div className="mt-6 p-4 bg-[var(--bg-primary)] rounded-xl">
 										<div className="flex items-center justify-between mb-3">
 											<label className="block text-sm font-semibold text-[var(--text-primary)]">
 												Цифровая подпись (Base64)
@@ -571,8 +591,7 @@ function ECCPanel() {
 										<textarea
 											value={generatedSignature}
 											readOnly
-											className="input-field h-24 resize-none bg-[var(--bg-primary)] font-mono text-sm"
-											placeholder="Здесь появится цифровая подпись..."
+											className="input-field h-24 resize-none bg-[var(--bg-tertiary)] font-mono text-sm"
 										/>
 										<p className="text-xs text-[var(--text-secondary)] mt-2">
 											Длина подписи: {generatedSignature.length} символов
@@ -613,10 +632,9 @@ function ECCPanel() {
 											value={formatJSON(encryptedResult)}
 											readOnly
 											className="input-field h-48 resize-none bg-[var(--bg-tertiary)] font-mono text-xs"
-											placeholder="Здесь появятся зашифрованные данные..."
 										/>
 										<p className="text-xs text-[var(--text-secondary)] mt-2">
-											Формат: ECDH + AES-GCM
+											Формат: ECDH + AES-GCM • Длина: {JSON.stringify(encryptedResult).length} символов
 										</p>
 									</div>
 								)}
@@ -633,7 +651,6 @@ function ECCPanel() {
 											value={decryptedResult}
 											readOnly
 											className="input-field h-32 resize-none bg-[var(--bg-tertiary)]"
-											placeholder="Здесь появится расшифрованное сообщение..."
 										/>
 										<p className="text-xs text-[var(--text-secondary)] mt-2">
 											Длина сообщения: {decryptedResult.length} символов
@@ -645,6 +662,7 @@ function ECCPanel() {
 					</div>
 				</div>
 
+				{/* Информационная секция */}
 				<div className="card p-6">
 					<div className="flex items-center space-x-3 mb-4">
 						<div className="w-10 h-10 bg-[var(--bg-tertiary)] rounded-xl flex items-center justify-center">

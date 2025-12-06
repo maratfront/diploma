@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from typing import Callable
 from Crypto.Cipher import AES, Blowfish, ChaCha20
-from Crypto.Hash import SHA256
+from Crypto.Hash import SHA256, SHA512
 from Crypto.PublicKey import RSA, ECC
 from Crypto.Signature import pss, DSS
 from Crypto.Util.Padding import pad, unpad
@@ -233,7 +233,7 @@ def sign_message_ecc(message: str, private_key_b64: str, hash_algorithm: str = "
         if hash_algorithm == "SHA256":
             hash_obj = SHA256.new(message.encode("utf-8"))
         elif hash_algorithm == "SHA512":
-            hash_obj = hashlib.sha512(message.encode("utf-8"))
+            hash_obj = SHA512.new(message.encode("utf-8"))  # Исправлено
         else:
             raise ValueError(f"Неподдерживаемый хэш-алгоритм: {hash_algorithm}")
         
@@ -260,7 +260,7 @@ def verify_message_ecc(message: str, signature_b64: str, public_key_b64: str,
         if hash_algorithm == "SHA256":
             hash_obj = SHA256.new(message.encode("utf-8"))
         elif hash_algorithm == "SHA512":
-            hash_obj = hashlib.sha512(message.encode("utf-8"))
+            hash_obj = SHA512.new(message.encode("utf-8"))  # Исправлено
         else:
             raise ValueError(f"Неподдерживаемый хэш-алгоритм: {hash_algorithm}")
         

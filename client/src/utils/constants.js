@@ -1,11 +1,27 @@
+// Добавляем новые типы операций в существующий массив MENU_ITEMS
+export const MENU_ITEMS = [
+  { id: 'dashboard', icon: 'layout-dashboard', label: 'Панель управления', description: 'Обзор системы' },
+  { id: 'encryption', icon: 'lock', label: 'Текстовое шифрование', description: 'Шифрование текста' },
+  { id: 'file-encryption', icon: 'file-lock', label: 'Шифрование файлов', description: 'Защита файлов' },
+  { id: 'digital-signatures', icon: 'shield-check', label: 'Электронные подписи', description: 'Цифровая подпись' },
+  { id: 'hashing', icon: 'hash', label: 'Хэширование', description: 'SHA-256, Argon2' },
+  { id: 'ecc', icon: 'circle', label: 'ECC криптография', description: 'Эллиптические кривые' },
+  { id: 'comparison', icon: 'chart-bar', label: 'Сравнение алгоритмов', description: 'Анализ методов' },
+  { id: 'web-implementation', icon: 'code', label: 'Веб-реализация', description: 'Примеры кода' },
+  { id: 'crypto-info', icon: 'book-open', label: 'База знаний', description: 'Теория криптографии' },
+  { id: 'history', icon: 'history', label: 'История операций', description: 'Журнал активности' },
+  { id: 'profile', icon: 'user', label: 'Личный кабинет', description: 'Настройки профиля' }
+];
+
+// Добавляем недостающие алгоритмы в ALGORITHM_INFO
 export const ALGORITHM_INFO = {
   'aes-gcm': {
-    name: 'AES-256',
+    name: 'AES-256-GCM',
     description: 'Современный стандарт шифрования (используется в банках, HTTPS, WhatsApp)',
     security: 'Очень высокая'
   },
   'chacha20': {
-    name: 'ChaCha20',
+    name: 'ChaCha20-Poly1305',
     description: 'Быстрый потоковый шифр (используется в TLS, VPN, современных приложениях)',
     security: 'Очень высокая'
   },
@@ -34,13 +50,18 @@ export const ALGORITHM_INFO = {
     description: 'Криптографический хэш (используется в блокчейне, SSL/TLS)',
     security: 'Высокая'
   },
+  'sha512': {
+    name: 'SHA-512',
+    description: 'Криптографический хэш с большей длиной (512 бит)',
+    security: 'Очень высокая'
+  },
   'argon2': {
     name: 'Argon2',
     description: 'Победитель Password Hashing Competition 2015 (для хэширования паролей)',
     security: 'Очень высокая'
   },
   'ecc': {
-    name: 'ECC',
+    name: 'ECC (Elliptic Curve)',
     description: 'Криптография на эллиптических кривых (малые ключи, высокая безопасность)',
     security: 'Очень высокая'
   },
@@ -48,22 +69,18 @@ export const ALGORITHM_INFO = {
     name: 'RSA',
     description: 'Асимметричное шифрование (цифровые подписи, шифрование)',
     security: 'Высокая'
+  },
+  'ecdsa': {
+    name: 'ECDSA',
+    description: 'Цифровая подпись на эллиптических кривых',
+    security: 'Очень высокая'
+  },
+  'ecdh': {
+    name: 'ECDH',
+    description: 'Протокол обмена ключами на эллиптических кривых',
+    security: 'Очень высокая'
   }
 };
-
-export const MENU_ITEMS = [
-  { id: 'dashboard', icon: 'layout-dashboard', label: 'Панель управления', description: 'Обзор системы' },
-  { id: 'encryption', icon: 'lock', label: 'Текстовое шифрование', description: 'Шифрование текста' },
-  { id: 'file-encryption', icon: 'file-lock', label: 'Шифрование файлов', description: 'Защита файлов' },
-  { id: 'digital-signatures', icon: 'shield-check', label: 'Электронные подписи', description: 'Цифровая подпись' },
-  { id: 'hashing', icon: 'hash', label: 'Хэширование', description: 'SHA-256, Argon2' },
-  { id: 'ecc', icon: 'circle', label: 'ECC криптография', description: 'Эллиптические кривые' },
-  { id: 'comparison', icon: 'chart-bar', label: 'Сравнение алгоритмов', description: 'Анализ методов' },
-  { id: 'web-implementation', icon: 'code', label: 'Веб-реализация', description: 'Примеры кода' },
-  { id: 'crypto-info', icon: 'book-open', label: 'База знаний', description: 'Теория криптографии' },
-  { id: 'history', icon: 'history', label: 'История операций', description: 'Журнал активности' },
-  { id: 'profile', icon: 'user', label: 'Личный кабинет', description: 'Настройки профиля' }
-];
 
 // Добавляем новые типы операций
 export const OPERATION_TYPES = {
@@ -72,7 +89,8 @@ export const OPERATION_TYPES = {
   SIGN: 'sign',
   VERIFY: 'verify',
   HASH: 'hash',
-  GENERATE_KEYPAIR: 'generate_keypair'
+  GENERATE_KEYPAIR: 'generate_keypair',
+  KEY_EXCHANGE: 'key_exchange'
 };
 
 export const OPERATION_LABELS = {
@@ -81,7 +99,8 @@ export const OPERATION_LABELS = {
   sign: 'Подпись',
   verify: 'Проверка',
   hash: 'Хэширование',
-  generate_keypair: 'Генерация ключей'
+  generate_keypair: 'Генерация ключей',
+  key_exchange: 'Обмен ключами'
 };
 
 export const OPERATION_ICONS = {
@@ -90,5 +109,6 @@ export const OPERATION_ICONS = {
   sign: 'pen-tool',
   verify: 'shield-check',
   hash: 'hash',
-  generate_keypair: 'key'
+  generate_keypair: 'key',
+  key_exchange: 'refresh-cw'
 };
