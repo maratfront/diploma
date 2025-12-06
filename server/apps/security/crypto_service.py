@@ -280,16 +280,18 @@ def verify_message_ecc(message: str, signature_b64: str, public_key_b64: str,
     except Exception as exc:
         raise ECCSignatureError("Ошибка при проверке подписи ECC") from exc
 
-def encrypt_ecc(message: str, public_key_b64: str) -> str:
+def encrypt_ecc(message: str, public_key_b64: str) -> dict:
     """
     Encrypt message using ECC public key (ECDH + AES).
     Returns a simple JSON object, not a string.
     """
     try:
-        ephemeral_key = ECC.generate(curve='P-256')
-        
         public_pem = _b64_decode(public_key_b64).decode('utf-8')
         recipient_key = ECC.import_key(public_pem)
+        
+        curve_name = recipient_key.curve
+        
+        ephemeral_key = ECC.generate(curve=curve_name)
         
         shared_secret = ephemeral_key.d * recipient_key.pointQ
         
@@ -326,6 +328,12 @@ def decrypt_ecc(encrypted_data: dict, private_key_b64: str) -> str:
         
         ephemeral_pubkey_pem = _b64_decode(data["ephemeral_pubkey"]).decode('utf-8')
         ephemeral_pubkey = ECC.import_key(ephemeral_pubkey_pem)
+        
+        if private_key.curve != ephemeral_pubkey.curve:
+            raise CryptoServiceError(
+                f"Несовпадение кривых: приватный ключ на {private_key.curve}, "
+                f"эфемерный ключ на {ephemeral_pubkey.curve}"
+            )
         
         shared_secret = private_key.d * ephemeral_pubkey.pointQ
         
