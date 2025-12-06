@@ -20,7 +20,6 @@ function ECCPanel() {
 		const [curve, setCurve] = React.useState('P-256');
 		const [hashAlgorithm, setHashAlgorithm] = React.useState('SHA256');
 
-		// Хранилище для сохранения данных при переключении операций
 		const [operationData, setOperationData] = React.useState({
 			signVerify: {
 				message: '',
@@ -35,31 +34,25 @@ function ECCPanel() {
 			}
 		});
 
-		// Ключи теперь генерируются автоматически
 		const [keyPair, setKeyPair] = React.useState(null);
 		const [generatedSignature, setGeneratedSignature] = React.useState('');
 		const [verificationResult, setVerificationResult] = React.useState(null);
 		const [encryptedResult, setEncryptedResult] = React.useState(null);
 		const [decryptedResult, setDecryptedResult] = React.useState('');
 
-		// Автоматическая генерация ключей при монтировании
 		React.useEffect(() => {
 			generateNewKeyPair();
 		}, [curve]);
 
-		// Сохранение данных при переключении операций
 		React.useEffect(() => {
 			if (operation === 'sign' || operation === 'verify') {
-				// При переключении на sign/verify, восстанавливаем сохраненные данные
 				const savedData = operationData.signVerify;
 				setMessage(savedData.message);
 				setSignature(savedData.signature);
 				if (operation === 'verify' && savedData.generatedSignature && !savedData.signature) {
-					// Если есть сгенерированная подпись, но поле подписи пустое, заполняем его
 					setSignature(savedData.generatedSignature);
 				}
 			} else {
-				// При переключении на encrypt/decrypt, восстанавливаем сохраненные данные
 				const savedData = operationData.encryptDecrypt;
 				setMessage(savedData.message);
 				setEncryptedData(savedData.encryptedData);
@@ -118,7 +111,6 @@ function ECCPanel() {
 				const result = await signECC(message, keyPair.private_key, hashAlgorithm);
 				setGeneratedSignature(result.signature);
 
-				// Сохраняем данные в хранилище
 				setOperationData(prev => ({
 					...prev,
 					signVerify: {
@@ -160,7 +152,6 @@ function ECCPanel() {
 				const result = await verifyECC(message, signature, keyPair.public_key, hashAlgorithm);
 				setVerificationResult(result.is_valid);
 
-				// Сохраняем данные в хранилище
 				setOperationData(prev => ({
 					...prev,
 					signVerify: {
@@ -217,7 +208,6 @@ function ECCPanel() {
 				const encryptedDataStr = JSON.stringify(parsedEncrypted, null, 2);
 				setEncryptedData(encryptedDataStr);
 
-				// Сохраняем данные в хранилище
 				setOperationData(prev => ({
 					...prev,
 					encryptDecrypt: {
@@ -256,13 +246,11 @@ function ECCPanel() {
 						dataToDecrypt = JSON.stringify(parsed);
 					}
 				} catch (e) {
-					// Если не JSON, используем как есть
 				}
 
 				const result = await decryptECC(dataToDecrypt, keyPair.private_key);
 				setDecryptedResult(result.decrypted);
 
-				// Сохраняем данные в хранилище
 				setOperationData(prev => ({
 					...prev,
 					encryptDecrypt: {
@@ -290,7 +278,6 @@ function ECCPanel() {
 			setEncryptedResult(null);
 			setDecryptedResult('');
 
-			// Очищаем хранилище
 			setOperationData({
 				signVerify: {
 					message: '',
@@ -318,9 +305,7 @@ function ECCPanel() {
 			return JSON.stringify(obj, null, 2);
 		};
 
-		// Обработчик переключения операции с сохранением данных
 		const handleOperationChange = (newOperation) => {
-			// Сохраняем текущие данные перед переключением
 			if (operation === 'sign' || operation === 'verify') {
 				setOperationData(prev => ({
 					...prev,
@@ -341,7 +326,6 @@ function ECCPanel() {
 				}));
 			}
 
-			// Очищаем временные результаты при переключении
 			setGeneratedSignature('');
 			setVerificationResult(null);
 			setDecryptedResult('');
@@ -350,7 +334,6 @@ function ECCPanel() {
 			setOperation(newOperation);
 		};
 
-		// Операции для переключателя
 		const operations = [
 			{ id: 'sign', label: 'Подписать', icon: 'pen-tool' },
 			{ id: 'verify', label: 'Проверить', icon: 'check' },
@@ -368,7 +351,6 @@ function ECCPanel() {
 				</div>
 
 				<div className="grid grid-cols-1 xl:grid-cols-3 gap-6 sm:gap-8">
-					{/* Левая колонка - ключи и настройки */}
 					<div className="card p-4 sm:p-6 lg:p-8">
 						<div className="flex items-center space-x-3 mb-4 sm:mb-6">
 							<div className="w-10 h-10 sm:w-12 sm:h-12 bg-[var(--primary-color)] rounded-xl flex items-center justify-center">
@@ -378,7 +360,6 @@ function ECCPanel() {
 						</div>
 
 						<div className="space-y-6">
-							{/* Выбор кривой */}
 							<div>
 								<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Кривая</label>
 								<select
@@ -397,7 +378,6 @@ function ECCPanel() {
 								<p className="text-xs text-[var(--text-secondary)] mt-1">При смене кривой генерируются новые ключи</p>
 							</div>
 
-							{/* Хэш-алгоритм для подписи/проверки */}
 							{(operation === 'sign' || operation === 'verify') && (
 								<div>
 									<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">Хэш-алгоритм</label>
@@ -413,7 +393,6 @@ function ECCPanel() {
 								</div>
 							)}
 
-							{/* Отображение ключей */}
 							{keyPair && (
 								<div className="space-y-4">
 									<div>
@@ -461,7 +440,6 @@ function ECCPanel() {
 						</div>
 					</div>
 
-					{/* Правая колонка - операции */}
 					<div className="xl:col-span-2">
 						<div className="card p-4 sm:p-6 lg:p-8">
 							<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-4">
@@ -476,7 +454,6 @@ function ECCPanel() {
 									</h3>
 								</div>
 
-								{/* Переключатель операций */}
 								<div className="grid grid-cols-4 gap-2 w-full sm:w-auto">
 									{operations.map(op => (
 										<button
@@ -496,7 +473,6 @@ function ECCPanel() {
 							</div>
 
 							<div className="space-y-6">
-								{/* Поле сообщения для всех операций, кроме расшифрования */}
 								{(operation === 'sign' || operation === 'verify' || operation === 'encrypt') && (
 									<div>
 										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
@@ -516,7 +492,6 @@ function ECCPanel() {
 									</div>
 								)}
 
-								{/* Поле подписи для проверки */}
 								{operation === 'verify' && (
 									<div>
 										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
@@ -532,7 +507,6 @@ function ECCPanel() {
 									</div>
 								)}
 
-								{/* Поле зашифрованных данных для расшифрования */}
 								{operation === 'decrypt' && (
 									<div>
 										<label className="block text-sm font-semibold text-[var(--text-primary)] mb-3">
@@ -548,7 +522,6 @@ function ECCPanel() {
 									</div>
 								)}
 
-								{/* Кнопка выполнения операции */}
 								<button
 									onClick={operation === 'sign' ? handleSign :
 										operation === 'verify' ? handleVerify :
@@ -579,7 +552,6 @@ function ECCPanel() {
 									)}
 								</button>
 
-								{/* Отображение результатов */}
 								{operation === 'sign' && generatedSignature && (
 									<div className="mt-6 p-4 bg-[var(--bg-primary)] rounded-xl">
 										<div className="flex items-center justify-between mb-3">
@@ -662,7 +634,6 @@ function ECCPanel() {
 					</div>
 				</div>
 
-				{/* Информационная секция */}
 				<div className="card p-6">
 					<div className="flex items-center space-x-3 mb-4">
 						<div className="w-10 h-10 bg-[var(--bg-tertiary)] rounded-xl flex items-center justify-center">

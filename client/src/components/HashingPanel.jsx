@@ -10,7 +10,7 @@ function HashingPanel() {
 		const [outputHash, setOutputHash] = React.useState('');
 		const [algorithm, setAlgorithm] = React.useState('sha256');
 		const [isProcessing, setIsProcessing] = React.useState(false);
-		const [mode, setMode] = React.useState('generate'); // 'generate' или 'verify'
+		const [mode, setMode] = React.useState('generate');
 		const [hashToVerify, setHashToVerify] = React.useState('');
 		const [verificationResult, setVerificationResult] = React.useState(null);
 		const [argon2Params, setArgon2Params] = React.useState({
@@ -28,12 +28,12 @@ function HashingPanel() {
 
 			setIsProcessing(true);
 			setVerificationResult(null);
-			setHashToVerify(''); // Очищаем поле проверки
+			setHashToVerify('');
 
 			try {
 				let result;
 
-				if (algorithm === 'sha256') {
+				if (algorithm === 'sha256' || algorithm === 'sha512') {
 					result = await hashData(inputText, algorithm);
 					setOutputHash(result.hash);
 				} else if (algorithm === 'argon2') {
@@ -167,18 +167,22 @@ function HashingPanel() {
 									}}
 									className="input-field"
 								>
-									<option value="sha256">SHA-256 (Быстрый, для целостности данных)</option>
+									<option value="sha256">SHA-256 (256-битный, быстрый)</option>
+									<option value="sha512">SHA-512 (512-битный, повышенная безопасность)</option>
 									<option value="argon2">Argon2 (Для паролей, защита от перебора)</option>
 								</select>
 
 								<div className="mt-3 p-3 bg-[var(--bg-tertiary)] rounded-xl">
 									<p className="text-sm font-medium text-[var(--text-primary)]">
-										{algorithm === 'sha256' ? 'SHA-256' : 'Argon2id'}
+										{algorithm === 'sha256' ? 'SHA-256' :
+											algorithm === 'sha512' ? 'SHA-512' : 'Argon2id'}
 									</p>
 									<p className="text-xs text-[var(--text-secondary)]">
 										{algorithm === 'sha256'
 											? '256-битный криптографический хэш, используется в блокчейне и для проверки целостности'
-											: 'Победитель Password Hashing Competition 2015, устойчив к GPU и ASIC атакам'}
+											: algorithm === 'sha512'
+												? '512-битный криптографический хэш, повышенная безопасность для критических приложений'
+												: 'Победитель Password Hashing Competition 2015, устойчив к GPU и ASIC атакам'}
 									</p>
 								</div>
 							</div>
@@ -311,7 +315,6 @@ function HashingPanel() {
 									)}
 								</div>
 
-								{/* Блок с результатом генерации */}
 								{mode === 'generate' && outputHash && (
 									<div className="p-4 bg-[var(--bg-primary)] rounded-xl">
 										<div className="flex items-center justify-between mb-3">
@@ -333,7 +336,6 @@ function HashingPanel() {
 									</div>
 								)}
 
-								{/* Блок с результатом проверки */}
 								{mode === 'verify' && verificationResult !== null && (
 									<div className={`p-4 rounded-xl border ${verificationResult
 										? 'bg-green-50 border-green-300 text-green-700'
@@ -366,7 +368,7 @@ function HashingPanel() {
 						</div>
 						<h3 className="text-lg font-bold text-[var(--text-primary)]">О алгоритмах хэширования</h3>
 					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div className="bg-[var(--bg-secondary)] p-4 rounded-xl">
 							<h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center">
 								<div className="icon-shield text-lg mr-2 text-green-500"></div>
@@ -378,10 +380,25 @@ function HashingPanel() {
 							<ul className="text-xs text-[var(--text-secondary)] space-y-1">
 								<li>• Размер хэша: 256 бит (64 hex символа)</li>
 								<li>• Скорость: Очень высокая</li>
-								<li>• Проверка: Сравнение вычисленного хэша с сохраненным</li>
-								<li>• Использование: Проверка целостности файлов, цифровые подписи</li>
+								<li>• Использование: Проверка целостности файлов</li>
 							</ul>
 						</div>
+
+						<div className="bg-[var(--bg-secondary)] p-4 rounded-xl">
+							<h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center">
+								<div className="icon-shield text-lg mr-2 text-purple-500"></div>
+								SHA-512
+							</h4>
+							<p className="text-sm text-[var(--text-secondary)] mb-2">
+								512-битный криптографический хэш, повышенная безопасность для критических приложений.
+							</p>
+							<ul className="text-xs text-[var(--text-secondary)] space-y-1">
+								<li>• Размер хэша: 512 бит (128 hex символов)</li>
+								<li>• Скорость: Высокая, но медленнее SHA-256</li>
+								<li>• Использование: SSL/TLS, безопасное хранение паролей</li>
+							</ul>
+						</div>
+
 						<div className="bg-[var(--bg-secondary)] p-4 rounded-xl">
 							<h4 className="font-semibold text-[var(--text-primary)] mb-2 flex items-center">
 								<div className="icon-lock text-lg mr-2 text-blue-500"></div>
@@ -393,7 +410,6 @@ function HashingPanel() {
 							<ul className="text-xs text-[var(--text-secondary)] space-y-1">
 								<li>• Победитель Password Hashing Competition 2015</li>
 								<li>• Настраиваемые параметры безопасности</li>
-								<li>• Проверка: Специальная функция верификации с учетом параметров</li>
 								<li>• Использование: Хранение паролей, ключей шифрования</li>
 							</ul>
 						</div>

@@ -1,4 +1,3 @@
-// Secure Key Generator using Web Crypto API
 const DEFAULT_WORD_LIST = [
   'apple', 'banana', 'cherry', 'dragon', 'elephant', 'forest', 'garden', 'harbor',
   'island', 'jungle', 'kingdom', 'lion', 'mountain', 'notebook', 'ocean', 'palace',
@@ -34,7 +33,6 @@ class KeyGenerator {
       excludeAmbiguous = false
     } = options;
 
-    // Нормализуем длину и ограничиваем разумными пределами
     const safeLength = Math.max(
       4,
       Math.min(128, Number.isFinite(length) ? Math.floor(length) : 32)
@@ -45,14 +43,12 @@ class KeyGenerator {
     let numberChars = '0123456789';
     let specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
-    // Exclude similar looking characters
     if (excludeSimilar) {
       lowercaseChars = lowercaseChars.replace(/[il1o0]/g, '');
       uppercaseChars = uppercaseChars.replace(/[IL1O0]/g, '');
       numberChars = numberChars.replace(/[10]/g, '');
     }
 
-    // Exclude ambiguous characters
     if (excludeAmbiguous) {
       specialChars = specialChars.replace(/[{}[\]()\/\\'"~,;:.<>]/g, '');
     }
@@ -81,25 +77,21 @@ class KeyGenerator {
       throw new Error('Выберите хотя бы один тип символов');
     }
 
-    // Generate random password
     const randomValues = new Uint32Array(safeLength);
     const cryptoApi = this.getCrypto();
     cryptoApi.getRandomValues(randomValues);
 
     let key = '';
 
-    // Ensure at least one character from each required set
     for (let i = 0; i < required.length && i < safeLength; i++) {
       const set = required[i];
       key += set[randomValues[i] % set.length];
     }
 
-    // Fill remaining length
     for (let i = required.length; i < safeLength; i++) {
       key += charset[randomValues[i] % charset.length];
     }
 
-    // Shuffle the password
     return this.shuffleString(key);
   }
 
@@ -109,7 +101,6 @@ class KeyGenerator {
     const arr = str.split('');
     try {
       const cryptoApi = this.getCrypto();
-      // Генерируем все случайные числа за один раз
       const randomValues = new Uint32Array(arr.length);
       cryptoApi.getRandomValues(randomValues);
 
@@ -118,7 +109,6 @@ class KeyGenerator {
         [arr[i], arr[j]] = [arr[j], arr[i]];
       }
     } catch (error) {
-      // Fallback: Fisher-Yates shuffle с Math.random()
       for (let i = arr.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -152,12 +142,11 @@ class KeyGenerator {
       }
       const history = JSON.parse(localStorage.getItem('password_history') || '[]');
       const entry = {
-        password, // Сохраняем оригинальный пароль (не хешированный)
+        password,
         timestamp: Date.now(),
         strength: this.assessKeyStrength(password)
       };
 
-      // Удаляем старые записи с неверной структурой
       const cleanHistory = history.filter(item => item.password);
 
       cleanHistory.unshift(entry);
@@ -175,7 +164,6 @@ class KeyGenerator {
         return [];
       }
       const history = JSON.parse(localStorage.getItem('password_history') || '[]');
-      // Фильтруем только валидные записи
       return history.filter(item => item.password && item.timestamp && item.strength);
     } catch (e) {
       console.error('Error getting history:', e);
@@ -212,7 +200,6 @@ class KeyGenerator {
       return 0;
     }
 
-    // Entropy = log2(poolSize^length)
     const entropy = password.length * Math.log2(poolSize);
     return Math.round(entropy);
   }
@@ -230,10 +217,8 @@ class KeyGenerator {
     const entropy = this.calculateEntropy(password);
     const length = password.length;
 
-    // Calculate estimated crack time
     const crackTime = this.estimateCrackTime(entropy);
 
-    // Check for common patterns
     const hasSequential = /(?:abc|bcd|cde|def|123|234|345|456|567|678|789|890)/i.test(password);
     const hasRepeating = /(.)\1{2,}/.test(password);
     const commonPatterns = hasSequential || hasRepeating;
@@ -249,7 +234,6 @@ class KeyGenerator {
 
     score = Math.max(0, Math.min(100, score));
 
-    // Strength levels
     if (score >= 80 && entropy >= 80 && !commonPatterns) {
       return {
         level: 5,
@@ -299,7 +283,6 @@ class KeyGenerator {
   }
 
   static estimateCrackTime(entropy) {
-    // Assume 1 billion attempts per second (modern hardware)
     const attemptsPerSecond = 1e9;
     const possibleCombinations = Math.pow(2, entropy);
     const seconds = possibleCombinations / (2 * attemptsPerSecond);

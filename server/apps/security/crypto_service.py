@@ -11,7 +11,6 @@ from Crypto.PublicKey import RSA, ECC
 from Crypto.Signature import pss, DSS
 from Crypto.Util.Padding import pad, unpad
 
-# Классы исключений
 class CryptoServiceError(Exception):
     """Raised when we cannot complete the requested crypto operation."""
 
@@ -24,7 +23,6 @@ class ECCSignatureError(CryptoServiceError):
 class HashingError(CryptoServiceError):
     """Raised when hashing operations fail."""
 
-# Проверка доступности argon2
 try:
     import argon2
     ARGON2_AVAILABLE = True
@@ -147,6 +145,18 @@ def hash_sha256(data: str) -> str:
     except Exception as exc:
         raise HashingError(f"Ошибка при вычислении SHA-256: {str(exc)}")
 
+def hash_sha512(data: str) -> str:
+    """Compute SHA-512 hash of the input data."""
+    try:
+        if isinstance(data, str):
+            data_bytes = data.encode('utf-8')
+        else:
+            data_bytes = data
+        
+        return hashlib.sha512(data_bytes).hexdigest()
+    except Exception as exc:
+        raise HashingError(f"Ошибка при вычислении SHA-512: {str(exc)}")
+
 def hash_argon2(data: str, time_cost: int = 2, memory_cost: int = 512, 
                parallelism: int = 2, hash_len: int = 32) -> dict:
     """
@@ -167,9 +177,8 @@ def hash_argon2(data: str, time_cost: int = 2, memory_cost: int = 512,
         
         hash_result = hasher.hash(data)
         
-        # Возвращаем ТОЛЬКО хэш, без лишних деталей
         return {
-            "hash": hash_result  # ✅ Только хэш, без salt и params
+            "hash": hash_result
         }
     except Exception as exc:
         raise HashingError(f"Ошибка при вычислении Argon2: {str(exc)}")
@@ -229,7 +238,6 @@ def sign_message_ecc(message: str, private_key_b64: str, hash_algorithm: str = "
         raise ECCSignatureError("Некорректный приватный ключ ECC") from exc
 
     try:
-        # Выбор хэш-алгоритма
         if hash_algorithm == "SHA256":
             hash_obj = SHA256.new(message.encode("utf-8"))
         elif hash_algorithm == "SHA512":
@@ -354,17 +362,16 @@ class CryptoEngine:
             raise CryptoServiceError("Необходим ключ для выбранного алгоритма")
         return self.key
 
-    # Public API
     def process(self, payload: str = "") -> dict:
         """Основной метод для обработки всех операций."""
         try:
-            if self.algorithm in ["sha256", "argon2"] and self.operation == "verify":
+            if self.algorithm in ["sha256", "sha512", "argon2"] and self.operation == "verify":
                 if self.params and "hash" in self.params:
                     return self._verify_hash(payload, self.params["hash"])
                 else:
                     raise CryptoServiceError("Для проверки хэша необходимо передать hash в параметрах")
             
-            if self.algorithm in ["sha256", "argon2"]:
+            if self.algorithm in ["sha256", "sha512", "argon2"]:
                 if self.operation == "hash":
                     return self._hash(payload)
                 else:
@@ -391,6 +398,8 @@ class CryptoEngine:
         """Обработка хэширования."""
         if self.algorithm == "sha256":
             return {"hash": hash_sha256(payload)}
+        elif self.algorithm == "sha512":
+            return {"hash": hash_sha512(payload)}
         elif self.algorithm == "argon2":
             if not ARGON2_AVAILABLE:
                 raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
@@ -407,18 +416,20 @@ class CryptoEngine:
         raise CryptoServiceError(f"Неподдерживаемый алгоритм хэширования: {self.algorithm}")
 
     def _verify_hash(self, payload: str, hash_value: str) -> dict:
-        """Проверка хэша для SHA-256 и Argon2."""
+        """Проверка хэша для SHA-256, SHA-512 и Argon2."""
         try:
             if self.algorithm == "sha256":
-                # Для SHA-256 просто сравниваем хэши
                 computed_hash = hash_sha256(payload)
+                return {"is_valid": computed_hash == hash_value}
+            
+            elif self.algorithm == "sha512":
+                computed_hash = hash_sha512(payload)
                 return {"is_valid": computed_hash == hash_value}
             
             elif self.algorithm == "argon2":
                 if not ARGON2_AVAILABLE:
                     raise HashingError("Argon2 не доступен. Установите argon2-cffi: pip install argon2-cffi")
                 
-                # Для Argon2 используем специальную функцию проверки
                 try:
                     hasher = argon2.PasswordHasher()
                     hasher.verify(hash_value, payload)
@@ -452,7 +463,7 @@ class CryptoEngine:
                 "curve": keypair.curve
             }
         elif self.algorithm == "rsa":
-            from .crypto_service import generate_rsa_keypair  # Импортируем здесь
+            from .crypto_service import generate_rsa_keypair
             keypair = generate_rsa_keypair(self.params.get("bits", 2048) if self.params else 2048)
             return {
                 "public_key": keypair.public_key_b64,
@@ -487,9 +498,8 @@ class CryptoEngine:
         
         if self.operation == "encrypt":
             encrypted = encrypt_ecc(payload, self.key)
-            return {"encrypted": encrypted}  # ✅ Возвращаем объект, а не строку
+            return {"encrypted": encrypted}
         elif self.operation == "decrypt":
-            # Парсим JSON, если это строка
             if isinstance(payload, str):
                 try:
                     payload_data = json.loads(payload)
@@ -503,20 +513,16 @@ class CryptoEngine:
         
         raise CryptoServiceError(f"Неподдерживаемая ECC операция: {self.operation}")
 
-    # Public API
     def encrypt(self, payload: str) -> str:
         if self.is_binary:
-            # Для бинарных данных payload - это base64 строка
             return self._dispatch_binary("encrypt")(payload)
         return self._dispatch("encrypt")(payload)
 
     def decrypt(self, payload: str) -> str:
         if self.is_binary:
-            # Для бинарных данных payload - это base64 строка
             return self._dispatch_binary("decrypt")(payload)
         return self._dispatch("decrypt")(payload)
 
-    # Internal helpers для текстовых данных
     def _dispatch(self, operation: str) -> Callable[[str], str]:
         lookup = {
             "aes-gcm": (self._aes_encrypt, self._aes_decrypt),
@@ -533,7 +539,6 @@ class CryptoEngine:
         encryptor, decryptor = lookup[self.algorithm]
         return encryptor if operation == "encrypt" else decryptor
 
-    # Internal helpers для бинарных данных
     def _dispatch_binary(self, operation: str) -> Callable[[str], str]:
         lookup = {
             "aes-gcm": (self._aes_encrypt_binary, self._aes_decrypt_binary),
@@ -552,7 +557,7 @@ class CryptoEngine:
         encryptor, decryptor = lookup[self.algorithm]
         return encryptor if operation == "encrypt" else decryptor
 
-    # AES (GCM) - для текстовых данных
+    # AES (GCM)
     def _aes_encrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
         nonce = _generate_secure_random_bytes(12)
@@ -571,9 +576,8 @@ class CryptoEngine:
             raise CryptoServiceError("Неверный ключ или поврежденные данные") from exc
         return plaintext.decode("utf-8")
 
-    # AES (GCM) - для бинарных данных
+    # AES (GCM)
     def _aes_encrypt_binary(self, payload: str) -> str:
-        # payload - это base64 строка с бинарными данными
         data_bytes = _b64_decode(payload)
         key_bytes = _derive_bytes(self._require_key(), 32)
         nonce = _generate_secure_random_bytes(12)
@@ -590,9 +594,9 @@ class CryptoEngine:
             plaintext = cipher.decrypt_and_verify(ciphertext, tag)
         except ValueError as exc:
             raise CryptoServiceError("Неверный ключ или поврежденные данные") from exc
-        return _b64_encode(plaintext)  # Возвращаем base64 строку
+        return _b64_encode(plaintext)
 
-    # ChaCha20 - для текстовых данных
+    # ChaCha20
     def _chacha_encrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 32)
         nonce = _generate_secure_random_bytes(12)
@@ -608,7 +612,7 @@ class CryptoEngine:
         plaintext = cipher.decrypt(ciphertext)
         return plaintext.decode("utf-8")
 
-    # ChaCha20 - для бинарных данных
+    # ChaCha20
     def _chacha_encrypt_binary(self, payload: str) -> str:
         data_bytes = _b64_decode(payload)
         key_bytes = _derive_bytes(self._require_key(), 32)
@@ -623,9 +627,9 @@ class CryptoEngine:
         nonce, ciphertext = data[:12], data[12:]
         cipher = ChaCha20.new(key=key_bytes, nonce=nonce)
         plaintext = cipher.decrypt(ciphertext)
-        return _b64_encode(plaintext)  # Возвращаем base64 строку
+        return _b64_encode(plaintext)
 
-    # Blowfish (CBC) - для текстовых данных
+    # Blowfish
     def _blowfish_encrypt(self, payload: str) -> str:
         key_bytes = _derive_bytes(self._require_key(), 56)
         iv = _generate_secure_random_bytes(Blowfish.block_size)
@@ -641,7 +645,7 @@ class CryptoEngine:
         plaintext = unpad(cipher.decrypt(ciphertext), Blowfish.block_size)
         return plaintext.decode("utf-8")
 
-    # Blowfish (CBC) - для бинарных данных
+    # Blowfish
     def _blowfish_encrypt_binary(self, payload: str) -> str:
         data_bytes = _b64_decode(payload)
         key_bytes = _derive_bytes(self._require_key(), 56)
@@ -656,9 +660,9 @@ class CryptoEngine:
         iv, ciphertext = data[:Blowfish.block_size], data[Blowfish.block_size:]
         cipher = Blowfish.new(key_bytes, Blowfish.MODE_CBC, iv=iv)
         plaintext = unpad(cipher.decrypt(ciphertext), Blowfish.block_size)
-        return _b64_encode(plaintext)  # Возвращаем base64 строку
+        return _b64_encode(plaintext)
 
-    # Twofish - для текстовых данных
+    # Twofish
     def _twofish_encrypt(self, payload: str) -> str:
         try:
             key_bytes = _derive_bytes(self._require_key(), 32)
@@ -719,7 +723,7 @@ class CryptoEngine:
             plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
             return plaintext.decode("utf-8")
 
-    # Twofish - для бинарных данных
+    # Twofish
     def _twofish_encrypt_binary(self, payload: str) -> str:
         data_bytes = _b64_decode(payload)
         
@@ -772,7 +776,7 @@ class CryptoEngine:
                 prev = block
 
             unpadded = unpad(plaintext, Twofish.block_size)
-            return _b64_encode(unpadded)  # Возвращаем base64 строку
+            return _b64_encode(unpadded)
             
         except ImportError:
             key_bytes = _derive_bytes(self._require_key(), 32)
@@ -780,9 +784,9 @@ class CryptoEngine:
             iv, ciphertext = data[:AES.block_size], data[AES.block_size:]
             cipher = AES.new(key_bytes, AES.MODE_CBC, iv=iv)
             plaintext = unpad(cipher.decrypt(ciphertext), AES.block_size)
-            return _b64_encode(plaintext)  # Возвращаем base64 строку
+            return _b64_encode(plaintext)
 
-    # Caesar - только для текстовых данных
+    # Caesar
     def _caesar_encrypt(self, payload: str) -> str:
         shift = int(self._require_key()) % 26
         return "".join(self._shift_char(ch, shift) for ch in payload)
@@ -808,7 +812,7 @@ class CryptoEngine:
             or char
         )
 
-    # Base64 - для текстовых данных
+    # Base64
     @staticmethod
     def _base64_encode(payload: str) -> str:
         return _b64_encode(payload.encode("utf-8"))
@@ -817,13 +821,10 @@ class CryptoEngine:
     def _base64_decode(payload: str) -> str:
         return _b64_decode(payload).decode("utf-8")
 
-    # Base64 - для бинарных данных
     @staticmethod
     def _base64_encode_binary(payload: str) -> str:
-        # payload уже base64 строка, просто возвращаем как есть
         return payload
 
     @staticmethod
     def _base64_decode_binary(payload: str) -> str:
-        # payload уже base64 строка, просто возвращаем как есть
         return payload

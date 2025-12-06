@@ -1,4 +1,3 @@
-// Добавляем новые типы операций в существующий массив MENU_ITEMS
 export const MENU_ITEMS = [
   { id: 'dashboard', icon: 'layout-dashboard', label: 'Панель управления', description: 'Обзор системы' },
   { id: 'encryption', icon: 'lock', label: 'Текстовое шифрование', description: 'Шифрование текста' },
@@ -13,7 +12,6 @@ export const MENU_ITEMS = [
   { id: 'profile', icon: 'user', label: 'Личный кабинет', description: 'Настройки профиля' }
 ];
 
-// Добавляем недостающие алгоритмы в ALGORITHM_INFO
 export const ALGORITHM_INFO = {
   'aes-gcm': {
     name: 'AES-256-GCM',
@@ -69,20 +67,9 @@ export const ALGORITHM_INFO = {
     name: 'RSA',
     description: 'Асимметричное шифрование (цифровые подписи, шифрование)',
     security: 'Высокая'
-  },
-  'ecdsa': {
-    name: 'ECDSA',
-    description: 'Цифровая подпись на эллиптических кривых',
-    security: 'Очень высокая'
-  },
-  'ecdh': {
-    name: 'ECDH',
-    description: 'Протокол обмена ключами на эллиптических кривых',
-    security: 'Очень высокая'
   }
 };
 
-// Добавляем новые типы операций
 export const OPERATION_TYPES = {
   ENCRYPT: 'encrypt',
   DECRYPT: 'decrypt',

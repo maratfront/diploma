@@ -52,8 +52,16 @@ export async function decryptFile(fileContent, algorithm, key, isBinary = false)
 }
 
 export async function hashData(text, algorithm, params = {}) {
+  if (!['sha256', 'sha512', 'argon2'].includes(algorithm)) {
+    throw new Error(`Неподдерживаемый алгоритм хэширования: ${algorithm}`);
+  }
   const data = await requestCrypto('hash', algorithm, text, '', false, params);
   return data;
+}
+
+export async function hashSHA512(text) {
+  const data = await requestCrypto('hash', 'sha512', text, '', false, {});
+  return data.hash;
 }
 
 export async function verifyHash(text, hashValue, algorithm) {

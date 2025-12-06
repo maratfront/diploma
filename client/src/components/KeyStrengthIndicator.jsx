@@ -1,5 +1,3 @@
-import React from 'react';
-
 function KeyStrengthIndicator({ strength, entropy, length }) {
   const colorClasses = {
     gray: 'bg-gray-300',

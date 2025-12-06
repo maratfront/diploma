@@ -267,8 +267,6 @@ function UserProfile({ user, onUserUpdate }) {
               </div>
             </div>
 
-
-
             <div className="card-compact p-4 sm:p-6">
               <h3 className="text-base sm:text-lg font-bold text-[var(--text-primary)] mb-3 sm:mb-4">Дополнительная информация</h3>
               <div className="space-y-3">

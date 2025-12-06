@@ -26,7 +26,7 @@ function Dashboard() {
           successRate: 98.5
         });
 
-        setRecentHistory(history.slice(0, 14));
+        setRecentHistory(history.slice(0, 12));
       };
 
       loadHistory();
@@ -97,7 +97,6 @@ function Dashboard() {
           </p>
         </div>
 
-        {/* Статистика */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
           {statCards.map((stat, index) => (
             <div key={index} className="stat-card">
@@ -183,17 +182,6 @@ function Dashboard() {
   } catch (error) {
     console.error('Dashboard component error:', error);
     return null;
-  }
-}
-
-function getSecurityBadgeColor(security) {
-  switch (security) {
-    case 'Очень высокая': return 'bg-green-100 text-green-800';
-    case 'Высокая': return 'bg-blue-100 text-blue-800';
-    case 'Средняя': return 'bg-yellow-100 text-yellow-800';
-    case 'Низкая': return 'bg-orange-100 text-orange-800';
-    case 'Очень низкая': return 'bg-red-100 text-red-800';
-    default: return 'bg-gray-100 text-gray-800';
   }
 }
 

@@ -1,4 +1,3 @@
-// Для текстовых файлов
 export function readFileAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -15,13 +14,11 @@ export function readFileAsText(file) {
   });
 }
 
-// Для бинарных файлов (Word, PDF, изображения)
 export function readFileAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
     reader.onload = (event) => {
-      // Конвертируем ArrayBuffer в base64 строку
       const base64 = event.target.result.split(',')[1];
       resolve(base64);
     };
@@ -37,7 +34,6 @@ export function readFileAsBase64(file) {
 export function downloadFile(content, filename, mimeType = 'text/plain') {
   let blob;
 
-  // Если контент в формате base64 (с префиксом data:)
   if (content.startsWith('data:')) {
     const byteCharacters = atob(content.split(',')[1]);
     const byteNumbers = new Array(byteCharacters.length);
@@ -47,7 +43,6 @@ export function downloadFile(content, filename, mimeType = 'text/plain') {
     const byteArray = new Uint8Array(byteNumbers);
     blob = new Blob([byteArray], { type: mimeType });
   } else {
-    // Если обычный текст
     blob = new Blob([content], { type: mimeType });
   }
 
@@ -63,7 +58,6 @@ export function downloadFile(content, filename, mimeType = 'text/plain') {
   URL.revokeObjectURL(url);
 }
 
-// Утилита для сохранения base64 как файла
 export function downloadBase64File(base64String, filename, mimeType) {
   const link = document.createElement('a');
   link.href = `data:${mimeType};base64,${base64String}`;
@@ -88,7 +82,6 @@ export function isTextFile(file) {
   return textExtensions.includes(extension) || file.type.startsWith('text/');
 }
 
-// Проверка бинарных файлов
 export function isBinaryFile(file) {
   const binaryExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'jpg', 'jpeg', 'png', 'gif'];
   const extension = getFileExtension(file.name);
@@ -97,7 +90,6 @@ export function isBinaryFile(file) {
     file.type.startsWith('image/');
 }
 
-// Определение MIME типа по расширению
 export function getMimeType(filename) {
   const extension = getFileExtension(filename);
   const mimeTypes = {

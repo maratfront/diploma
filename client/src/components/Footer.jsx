@@ -43,9 +43,7 @@ function Footer() {
   return (
     <footer className="bg-[var(--bg-primary)] border-t border-[var(--border-color)] py-8 sm:py-12 mt-12 sm:mt-16" data-name="footer" data-file="components/Footer.jsx">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        {/* Основные секции */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          {/* О проекте */}
           <div className="space-y-4">
             <div className="flex items-center space-x-3 mb-4">
               <div className="w-12 h-12 bg-gradient-to-br from-[var(--primary-color)] to-[var(--accent-color)] rounded-xl flex items-center justify-center shadow-lg">
@@ -61,7 +59,6 @@ function Footer() {
             </p>
           </div>
 
-          {/* Навигация и ресурсы */}
           <div className="space-y-6">
             <div>
               <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center">
@@ -123,7 +120,6 @@ function Footer() {
             </div>
           </div>
 
-          {/* Стек технологий */}
           <div className="space-y-6">
             <div>
               <h4 className="text-lg font-semibold text-[var(--text-primary)] mb-4 flex items-center">
@@ -146,10 +142,8 @@ function Footer() {
           </div>
         </div>
 
-        {/* Разделитель */}
         <div className="border-t border-[var(--border-color)] my-6"></div>
 
-        {/* Копирайт и нижняя информация */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4">
           <div className="text-center md:text-left">
             <p className="text-sm text-[var(--text-secondary)]">

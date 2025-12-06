@@ -22,7 +22,6 @@ function EncryptionPanel() {
         return;
       }
 
-      // Валидация ключа
       if (algorithm !== 'base64' && algorithm !== 'caesar') {
         if (!key.trim()) {
           NotificationManager.error('Введите ключ шифрования');

@@ -27,7 +27,6 @@ async function authorizedRequest(path, options = {}) {
         detail = data.detail;
       }
     } catch (e) {
-      // ignore parse error
     }
     throw new Error(detail);
   }
@@ -65,7 +64,6 @@ export async function addToHistory(operation) {
     });
   } catch (error) {
     console.error('Error saving operation to history on server:', error);
-    // Не блокируем UX, просто логируем и показываем уведомление
     NotificationManager.warning('Операция выполнена, но не удалось сохранить её в историю');
   }
 }
